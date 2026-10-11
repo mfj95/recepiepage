@@ -243,6 +243,12 @@
   }
   .export-btn:hover{background:#e8b53a;}
   .export-msg{font-size:12px;color:var(--sage);min-height:16px;margin-bottom:6px;}
+  .extra-form{display:flex;gap:8px;margin:0 0 16px;}
+  .extra-input{flex:1;min-width:0;background:var(--charcoal);border:1px solid var(--line);color:var(--bone);padding:10px;border-radius:3px;font-family:'Inter',sans-serif;font-size:14px;}
+  .extra-price{width:64px;flex:0 0 64px;background:var(--charcoal);border:1px solid var(--line);color:var(--bone);padding:10px 8px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .extra-add{flex-shrink:0;background:var(--sage);border:none;color:var(--ink);font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:13px;padding:0 14px;border-radius:3px;cursor:pointer;}
+  .extra-del{flex-shrink:0;background:none;border:1px solid var(--line);color:var(--bone-dim);width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:12px;}
+  .extra-del:hover{color:var(--ember);border-color:var(--ember-dim);}
   .buy-note{font-size:11px;color:var(--bone-dim);margin-top:2px;}
   .synergy-block{background:var(--charcoal);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:0 0 18px;font-size:12.5px;color:var(--bone-dim);}
   .synergy-block b{color:var(--sage);}
@@ -1457,12 +1463,15 @@ function convertAmount(ing){
 }
 let weekPlan = {}; // recipeId -> servings, persists until cleared
 let checkedItems = {}; // ingredientKey -> bool, persists until cleared
+let extraItems = []; // your own added items: {id, name, price, checked}
 
 async function loadWeekPlan(){
   try{ const res = await window.storage.get('weekPlan', false); weekPlan = (res && res.value) ? JSON.parse(res.value) : {}; }
   catch(e){ weekPlan = {}; }
   try{ const res2 = await window.storage.get('checkedItems', false); checkedItems = (res2 && res2.value) ? JSON.parse(res2.value) : {}; }
   catch(e){ checkedItems = {}; }
+  try{ const res3 = await window.storage.get('extraItems', false); extraItems = (res3 && res3.value) ? JSON.parse(res3.value) : []; }
+  catch(e){ extraItems = []; }
   renderWeekStrip();
   render();
 }
@@ -1488,6 +1497,26 @@ async function saveChecked(){
   try{ await storageSetWithRetry('checkedItems', JSON.stringify(checkedItems)); }
   catch(e){ console.error('checkedItems save failed', e); }
 }
+async function saveExtras(){
+  try{ await storageSetWithRetry('extraItems', JSON.stringify(extraItems)); }
+  catch(e){ console.error('extraItems save failed', e); showSaveWarning('Added items failed to save: '+e.message); }
+}
+
+async function addExtraItem(){
+  const nameEl = document.getElementById('extraName');
+  const priceEl = document.getElementById('extraPrice');
+  if(!nameEl) return;
+  const name = nameEl.value.trim();
+  if(!name) return;
+  const price = parseFloat(String(priceEl ? priceEl.value : '').replace(',', '.')) || 0;
+  extraItems.push({id:'x'+Date.now(), name, price: price>0 ? price : 0, checked:false});
+  await saveExtras();
+  renderWeekStrip();
+  openShoppingList();
+  const again = document.getElementById('extraName');
+  if(again) again.focus();
+}
+
 function showSaveWarning(msg){
   let warn = document.getElementById('saveWarning');
   if(!warn){
@@ -1510,13 +1539,14 @@ document.addEventListener('visibilitychange', ()=>{
 function renderWeekStrip(){
   const strip = document.getElementById('weekStrip');
   const ids = Object.keys(weekPlan);
-  if(ids.length===0){ strip.style.display='none'; strip.innerHTML=''; return; }
   strip.style.display='flex';
   const chips = ids.map(id=>{
     const r = recipes.find(x=>x.id===id);
     return r ? `<span class="week-chip">${escapeHtml(r.title)} ×${weekPlan[id]}</span>` : '';
   }).join('');
-  strip.innerHTML = chips + `<button class="cart-btn" id="openList">Shopping List</button>`;
+  const extraChip = extraItems.length
+    ? `<span class="week-chip">+${extraItems.length} added item${extraItems.length>1?'s':''}</span>` : '';
+  strip.innerHTML = chips + extraChip + `<button class="cart-btn" id="openList">Shopping List</button>`;
   document.getElementById('openList').addEventListener('click', openShoppingList);
 }
 
@@ -1571,8 +1601,17 @@ function openShoppingList(){
 
 function shoppingListHtml(items){
   const recipeCount = Object.keys(weekPlan).length;
-  const total = items.reduce((s,it)=>s+it.cost, 0);
-  const remaining = items.reduce((s,it)=>s+(checkedItems[it.key]?0:it.cost), 0);
+  const total = items.reduce((s,it)=>s+it.cost, 0) + extraItems.reduce((s,x)=>s+x.price, 0);
+  const remaining = items.reduce((s,it)=>s+(checkedItems[it.key]?0:it.cost), 0)
+    + extraItems.reduce((s,x)=>s+(x.checked?0:x.price), 0);
+  const extraRows = extraItems.map(x=>`<li class="shop-item ${x.checked?'checked':''}" data-extra="${x.id}" data-cost="${x.price}">
+      <input type="checkbox" ${x.checked?'checked':''}>
+      <div style="flex:1;">
+        <div class="shop-row-top"><span>${escapeHtml(x.name)}</span><span class="shop-cost">${x.price>0?'£'+x.price.toFixed(2):''}</span></div>
+        <div class="buy-note">Added by you</div>
+      </div>
+      <button class="extra-del" title="Remove">✕</button>
+    </li>`).join('');
   const rows = items.map(it=>{
     const isChecked = !!checkedItems[it.key];
     const neededLabel = it.unit==='count'
@@ -1603,13 +1642,19 @@ function shoppingListHtml(items){
       <h2>Shopping List</h2>
       <button class="close" id="closeCard">✕</button>
     </div>
-    <div class="row-meta" style="margin-bottom:10px;">${items.length} item${items.length!==1?'s':''} across ${recipeCount} recipe${recipeCount!==1?'s':''}</div>
+    <div class="row-meta" style="margin-bottom:10px;">${items.length} item${items.length!==1?'s':''} across ${recipeCount} recipe${recipeCount!==1?'s':''}${extraItems.length?(' + '+extraItems.length+' added by you'):''}</div>
+    <div class="extra-form">
+      <input class="extra-input" id="extraName" placeholder="Add an item (e.g. washing-up liquid)" maxlength="80">
+      <input class="extra-price" id="extraPrice" placeholder="£" inputmode="decimal">
+      <button class="extra-add" id="extraAdd">Add</button>
+    </div>
     <div class="macro-strip" style="margin-bottom:16px;">
       <div class="macro-cell"><div class="macro-val">£${total.toFixed(2)}</div><div class="macro-key">Full total</div></div>
       <div class="macro-cell"><div class="macro-val" id="remainingTotal">£${remaining.toFixed(2)}</div><div class="macro-key">Left to buy</div></div>
     </div>
     <div class="row-meta" style="margin:-8px 0 12px;">Bold amount is what the recipes need — use that at any store. "Buy" line is Aldi's pack size. Tick items off as you shop — "Left to buy" updates live.</div>
-    <ul class="shop-list">${rows || '<li class="shop-item">Nothing planned yet.</li>'}</ul>
+    <ul class="shop-list">${rows || (extraItems.length ? '' : '<li class="shop-item">Nothing planned yet.</li>')}</ul>
+    ${extraItems.length ? `<div class="section-label">Your added items</div><ul class="shop-list">${extraRows}</ul>` : ''}
     <div class="note">Prices are approximate Aldi UK estimates, not live pricing — treat as a rough guide.</div>
     <div class="export-row">
       <button class="export-btn" id="saveListFile">Save as file</button>
@@ -1634,16 +1679,21 @@ function buildListText(){
     else if(it.unit==='count') s += ` (buy ${Math.ceil(it.qty-1e-6)})`;
     return s + ` - £${it.cost.toFixed(2)}`;
   };
-  const remaining = toBuy.reduce((s,it)=>s+it.cost, 0);
+  const extraLine = (x, box)=> `${box} ${x.name}` + (x.price>0 ? ` - £${x.price.toFixed(2)}` : '');
+  const extraBuy = extraItems.filter(x=>!x.checked);
+  const extraHave = extraItems.filter(x=>x.checked);
+  const remaining = toBuy.reduce((s,it)=>s+it.cost, 0) + extraBuy.reduce((s,x)=>s+x.price, 0);
   const planned = Object.keys(weekPlan).map(id=>{
     const r = recipes.find(x=>x.id===id);
     return r ? `- ${r.title} (${weekPlan[id]} portions)` : null;
   }).filter(Boolean);
-  let out = 'SHOPPING LIST - The Weekly Board\n\nRecipes this week:\n' + planned.join('\n');
-  out += '\n\nTO BUY\n' + (toBuy.map(it=>line(it,'[ ]')).join('\n') || '(nothing left to buy)');
+  const buyLines = toBuy.map(it=>line(it,'[ ]')).concat(extraBuy.map(x=>extraLine(x,'[ ]')));
+  const haveLines = have.map(it=>line(it,'[x]')).concat(extraHave.map(x=>extraLine(x,'[x]')));
+  let out = 'SHOPPING LIST - The Weekly Board\n\nRecipes this week:\n' + (planned.join('\n') || '(none)');
+  out += '\n\nTO BUY\n' + (buyLines.join('\n') || '(nothing left to buy)');
   out += `\n\nEstimated cost of remaining items: £${remaining.toFixed(2)} (approx. Aldi UK prices)\n`;
-  if(have.length){
-    out += '\nALREADY HAVE / BOUGHT\n' + have.map(it=>line(it,'[x]')).join('\n') + '\n';
+  if(haveLines.length){
+    out += '\nALREADY HAVE / BOUGHT\n' + haveLines.join('\n') + '\n';
   }
   return out;
 }
@@ -1693,7 +1743,7 @@ async function shareListText(){
 }
 
 function updateRemainingTotal(){
-  const items = document.querySelectorAll('.shop-item[data-key]');
+  const items = document.querySelectorAll('.shop-item[data-cost]');
   let remaining = 0;
   items.forEach(li=>{
     if(!li.classList.contains('checked')) remaining += parseFloat(li.dataset.cost) || 0;
@@ -1723,17 +1773,51 @@ function bindShoppingList(){
       await saveChecked();
     });
   });
+  const addBtn = document.getElementById('extraAdd');
+  if(addBtn) addBtn.addEventListener('click', addExtraItem);
+  ['extraName','extraPrice'].forEach(fid=>{
+    const el = document.getElementById(fid);
+    if(el) el.addEventListener('keydown', (ev)=>{ if(ev.key==='Enter'){ ev.preventDefault(); addExtraItem(); } });
+  });
+  document.querySelectorAll('.shop-item[data-extra]').forEach(li=>{
+    const id = li.dataset.extra;
+    const setChecked = async (val)=>{
+      const x = extraItems.find(i=>i.id===id);
+      if(!x) return;
+      x.checked = val;
+      li.classList.toggle('checked', val);
+      const cb = li.querySelector('input'); if(cb) cb.checked = val;
+      updateRemainingTotal();
+      await saveExtras();
+    };
+    li.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.extra-del') || ev.target.tagName==='INPUT') return;
+      const x = extraItems.find(i=>i.id===id);
+      setChecked(!(x && x.checked));
+    });
+    const cb = li.querySelector('input');
+    if(cb) cb.addEventListener('change', ()=> setChecked(cb.checked));
+    const del = li.querySelector('.extra-del');
+    if(del) del.addEventListener('click', async (ev)=>{
+      ev.stopPropagation();
+      extraItems = extraItems.filter(i=>i.id!==id);
+      await saveExtras();
+      renderWeekStrip();
+      openShoppingList();
+    });
+  });
   const saveBtn = document.getElementById('saveListFile');
   if(saveBtn) saveBtn.addEventListener('click', saveListAsFile);
   const shareBtn = document.getElementById('shareListText');
   if(shareBtn) shareBtn.addEventListener('click', shareListText);
   const clearBtn = document.getElementById('clearPlan');
   if(clearBtn) clearBtn.addEventListener('click', async ()=>{
-    if(!confirm('Clear your entire week plan and shopping list?')) return;
-    weekPlan = {}; checkedItems = {};
-    await saveWeekPlan(); await saveChecked();
+    if(!confirm('Clear your week plan, ticked items and any items you added?')) return;
+    weekPlan = {}; checkedItems = {}; extraItems = [];
+    await saveWeekPlan(); await saveChecked(); await saveExtras();
     closeCard();
     renderWeekStrip();
+    render();
   });
 }
 
