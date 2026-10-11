@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weekly-board-v2';
+const CACHE_NAME = 'weekly-board-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -24,8 +24,11 @@ self.addEventListener('activate', (event) => {
 
 // Network-first, cache fallback: you always get the latest version when online
 // (so updates show up straight away), and the cached copy when offline.
+// The recipe importer (/api/) is never cached.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.pathname.startsWith('/api/')) return;
   event.respondWith(
     fetch(event.request)
       .then((response) => {
