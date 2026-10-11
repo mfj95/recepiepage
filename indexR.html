@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Weekly Board</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#242220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Weekly Board">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#242220;
+    --charcoal-2:#2e2b28;
+    --bone:#EDE6D6;
+    --bone-dim:#c9c0ac;
+    --ember:#B5482A;
+    --ember-dim:#8f3a22;
+    --sage:#7A8B6F;
+    --mustard:#D9A62E;
+    --ink:#1A1815;
+    --line: rgba(237,230,214,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--charcoal);
+    color:var(--bone);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:28px 18px 80px;}
+  .hero{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:22px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--mustard);margin:0 0 8px;
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;text-transform:uppercase;
+    font-size:clamp(32px,7vw,48px);
+    letter-spacing:.01em;margin:0 0 6px;line-height:1;
+    color:var(--bone);
+  }
+  .sub{color:var(--bone-dim);font-size:14.5px;line-height:1.5;margin:0;max-width:520px;}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:22px 0 18px;}
+  .tab{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;letter-spacing:.03em;text-transform:uppercase;
+    padding:8px 13px;border-radius:3px;border:1px solid var(--line);
+    background:transparent;color:var(--bone-dim);cursor:pointer;
+    transition:all .15s ease;
+  }
+  .tab.active{background:var(--ember);border-color:var(--ember);color:var(--bone);}
+  .tab:hover:not(.active){border-color:var(--bone-dim);color:var(--bone);}
+  .search{
+    width:100%;background:var(--charcoal-2);border:1px solid var(--line);
+    color:var(--bone);padding:10px 12px;border-radius:3px;font-family:'Inter',sans-serif;
+    font-size:14px;margin-bottom:22px;
+  }
+  .search::placeholder{color:var(--bone-dim);}
+  .row{
+    display:flex;align-items:center;gap:14px;
+    padding:14px 4px;border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .row:hover .row-title{color:var(--mustard);}
+  .row-num{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--bone-dim);width:22px;flex-shrink:0;
+  }
+  .row-main{flex:1;min-width:0;}
+  .row-title{
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:17px;
+    text-transform:uppercase;letter-spacing:.01em;color:var(--bone);
+    transition:color .15s ease;
+  }
+  .row-meta{font-size:12.5px;color:var(--bone-dim);margin-top:3px;}
+  .tag{
+    display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    letter-spacing:.03em;text-transform:uppercase;padding:2px 6px;border-radius:2px;
+    margin-right:5px;border:1px solid var(--line);color:var(--bone-dim);
+  }
+  .tag.method{color:var(--mustard);border-color:rgba(217,166,46,0.35);}
+  .row-macro{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--sage);
+    text-align:right;flex-shrink:0;white-space:nowrap;
+  }
+  .quick-add{
+    flex-shrink:0;width:32px;height:32px;border-radius:50%;
+    border:1px solid var(--line);background:transparent;color:var(--bone-dim);
+    font-size:16px;line-height:1;cursor:pointer;
+  }
+  .quick-add.active{background:var(--sage);border-color:var(--sage);color:var(--ink);}
+  .quick-add:hover:not(.active){border-color:var(--mustard);color:var(--mustard);}
+  .empty{color:var(--bone-dim);text-align:center;padding:40px 0;font-size:14px;}
+
+  /* Detail overlay */
+  .overlay{
+    position:fixed;inset:0;background:rgba(15,14,13,0.72);
+    display:none;align-items:flex-start;justify-content:center;
+    padding:24px 14px;overflow-y:auto;z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .card{
+    background:var(--charcoal-2);border:1px solid var(--line);border-radius:6px;
+    max-width:600px;width:100%;padding:26px 24px 30px;margin-top:10px;
+  }
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .close{
+    background:none;border:1px solid var(--line);color:var(--bone-dim);
+    width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:15px;flex-shrink:0;
+  }
+  .close:hover{color:var(--bone);border-color:var(--bone-dim);}
+  .card h2{
+    font-family:'Oswald',sans-serif;text-transform:uppercase;font-weight:700;
+    font-size:26px;margin:0 0 6px;line-height:1.05;
+  }
+  .card .row-meta{margin-bottom:16px;}
+
+  /* Dial */
+  .dial-block{
+    display:flex;align-items:center;gap:18px;background:var(--charcoal);
+    border:1px solid var(--line);border-radius:6px;padding:16px;margin:18px 0 20px;
+  }
+  .dial{
+    position:relative;width:64px;height:64px;border-radius:50%;
+    border:3px solid var(--mustard);flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .dial::before{
+    content:'';position:absolute;top:5px;left:50%;width:2px;height:12px;
+    background:var(--mustard);transform-origin:bottom center;
+    transform:translateX(-50%) rotate(var(--dial-rot,0deg));
+    transition:transform .2s ease;
+  }
+  .dial-num{font-family:'Oswald',sans-serif;font-weight:700;font-size:22px;color:var(--bone);}
+  .dial-controls{flex:1;}
+  .dial-label{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--bone-dim);margin-bottom:6px;}
+  .dial-steps{display:flex;gap:6px;}
+  .dial-step{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;padding:5px 11px;border-radius:3px;
+    border:1px solid var(--line);background:transparent;color:var(--bone-dim);cursor:pointer;
+  }
+  .dial-step.active{background:var(--sage);border-color:var(--sage);color:var(--ink);}
+  .macro-strip{
+    display:flex;gap:0;border:1px solid var(--line);border-radius:4px;overflow:hidden;margin:0 0 20px;
+  }
+  .macro-cell{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--line);}
+  .macro-cell:last-child{border-right:none;}
+  .macro-val{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px;color:var(--bone);}
+  .macro-key{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--bone-dim);margin-top:2px;}
+  .section-label{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;
+    letter-spacing:.08em;color:var(--mustard);margin:20px 0 8px;
+  }
+  .ing-list{list-style:none;margin:0 0 4px;padding:0;font-size:14px;}
+  .ing-list li{padding:6px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;}
+  .ing-amt{font-family:'IBM Plex Mono',monospace;color:var(--sage);min-width:64px;flex-shrink:0;}
+  .steps{margin:0;padding-left:0;list-style:none;counter-reset:step;}
+  .steps li{
+    counter-increment:step;padding:9px 0 9px 30px;border-bottom:1px solid var(--line);
+    position:relative;font-size:14px;line-height:1.5;color:var(--bone);
+  }
+  .steps li::before{
+    content:counter(step);position:absolute;left:0;top:9px;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ember);border:1px solid var(--ember-dim);
+    width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  }
+  .note{font-size:12.5px;color:var(--bone-dim);margin-top:14px;font-style:italic;}
+  .del-btn{
+    margin-top:20px;background:none;border:1px solid var(--ember-dim);color:var(--ember);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;
+    padding:7px 12px;border-radius:3px;cursor:pointer;letter-spacing:.05em;
+  }
+  .del-btn:hover{background:var(--ember-dim);color:var(--bone);}
+
+  /* Add form */
+  .add-toggle{
+    width:100%;background:transparent;border:1px dashed var(--bone-dim);color:var(--bone-dim);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.05em;
+    padding:14px;border-radius:4px;cursor:pointer;margin-top:24px;
+  }
+  .add-toggle:hover{color:var(--bone);border-color:var(--bone);}
+  .add-form{display:none;margin-top:16px;background:var(--charcoal-2);border:1px solid var(--line);border-radius:6px;padding:20px;}
+  .add-form.open{display:block;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--bone-dim);margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%;background:var(--charcoal);border:1px solid var(--line);color:var(--bone);
+    padding:8px 10px;border-radius:3px;font-family:'Inter',sans-serif;font-size:13.5px;
+  }
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .ing-row{display:flex;gap:8px;margin-bottom:8px;}
+  .ing-row input:nth-child(1){width:70px;flex:0 0 70px;}
+  .ing-row input:nth-child(2){width:70px;flex:0 0 70px;}
+  .ing-row input:nth-child(3){flex:1;}
+  .ing-row button{background:none;border:1px solid var(--line);color:var(--bone-dim);border-radius:3px;padding:0 10px;cursor:pointer;}
+  .small-btn{
+    background:none;border:1px solid var(--line);color:var(--bone-dim);font-family:'IBM Plex Mono',monospace;
+    font-size:11px;padding:6px 10px;border-radius:3px;cursor:pointer;margin-bottom:12px;
+  }
+  .small-btn:hover{color:var(--bone);}
+  .submit-btn{
+    background:var(--ember);border:none;color:var(--bone);font-family:'Oswald',sans-serif;
+    text-transform:uppercase;font-weight:600;letter-spacing:.03em;font-size:14px;
+    padding:11px 20px;border-radius:4px;cursor:pointer;width:100%;margin-top:6px;
+  }
+  .submit-btn:hover{background:var(--ember-dim);}
+  .msg{font-size:12px;color:var(--sage);margin-top:8px;min-height:16px;}
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px;}
+
+  .week-strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:-6px 0 18px;padding:12px;background:var(--charcoal-2);border:1px solid var(--line);border-radius:6px;}
+  .week-chip{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--bone-dim);border:1px solid var(--line);border-radius:3px;padding:4px 8px;}
+  .cart-btn{
+    font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:.02em;
+    background:var(--mustard);color:var(--ink);border:none;padding:8px 14px;border-radius:4px;cursor:pointer;margin-left:auto;
+  }
+  .cart-btn:hover{background:#e8b53a;}
+  .plan-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.03em;
+    background:transparent;border:1px solid var(--sage);color:var(--sage);padding:9px 14px;border-radius:4px;cursor:pointer;width:100%;margin-top:2px;
+  }
+  .plan-btn.active{background:var(--sage);color:var(--ink);}
+  .shop-list{list-style:none;margin:0 0 18px;padding:0;}
+  .shop-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:14px;cursor:pointer;}
+  .shop-item input{width:16px;height:16px;flex-shrink:0;}
+  .shop-item.checked span{color:var(--bone-dim);text-decoration:line-through;}
+  .shop-row-top{display:flex;justify-content:space-between;gap:10px;}
+  .shop-cost{font-family:'IBM Plex Mono',monospace;color:var(--sage);flex-shrink:0;}
+  .leftover-note{font-size:11px;color:var(--mustard);margin-top:2px;}
+  .buy-note{font-size:11px;color:var(--bone-dim);margin-top:2px;}
+  .synergy-block{background:var(--charcoal);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:0 0 18px;font-size:12.5px;color:var(--bone-dim);}
+  .synergy-block b{color:var(--sage);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <p class="eyebrow">Grill · Air Fryer · Stovetop · Sunday Batch</p>
+    <h1>The Weekly Board</h1>
+    <p class="sub">Your saved rotation. Cook 2 on weeknights, batch 4 on Sundays. Dial the servings on any recipe to see real per-portion macros — no shellfish, ever.</p>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <input class="search" id="search" placeholder="Search recipes, proteins, tags…">
+  <div class="week-strip" id="weekStrip" style="display:none;"></div>
+  <div id="list"></div>
+
+  <button class="add-toggle" id="addToggle">+ Add a recipe to the board</button>
+  <div class="add-form" id="addForm">
+    <div class="field-row">
+      <div class="field"><label>Title</label><input id="f-title" placeholder="e.g. Miso Air Fryer Chicken"></div>
+      <div class="field"><label>Method</label>
+        <select id="f-method">
+          <option value="bbq">BBQ</option>
+          <option value="airfryer">Air Fryer</option>
+          <option value="stovetop">Stovetop</option>
+          <option value="oven">Oven</option>
+          <option value="batch">Sunday Batch</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Protein</label><input id="f-protein" placeholder="e.g. Chicken"></div>
+      <div class="field"><label>Base servings</label>
+        <select id="f-base"><option value="2">2</option><option value="4">4</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Calories / portion</label><input id="f-cal" type="number" placeholder="420"></div>
+      <div class="field"><label>Protein g / portion</label><input id="f-prot" type="number" placeholder="38"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Carbs g / portion</label><input id="f-carb" type="number" placeholder="30"></div>
+      <div class="field"><label>Fat g / portion</label><input id="f-fat" type="number" placeholder="16"></div>
+    </div>
+    <div class="field"><label>Total active + cook time</label><input id="f-time" placeholder="e.g. 25 min"></div>
+
+    <label style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--bone-dim);display:block;margin:14px 0 6px;">Ingredients (for base servings)</label>
+    <div id="ingRows"></div>
+    <button type="button" class="small-btn" id="addIngRow">+ add ingredient</button>
+
+    <label style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--bone-dim);display:block;margin:6px 0 6px;">Steps (one per line)</label>
+    <div class="field"><textarea id="f-steps" rows="4" placeholder="Season chicken with salt, pepper, garlic.&#10;Air fry at 200°C for 18 min, flipping once.&#10;Rest 5 min, slice, serve."></textarea></div>
+
+    <button class="submit-btn" id="saveRecipe">Save to board</button>
+    <div class="msg" id="saveMsg"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="card" id="cardBody"></div>
+</div>
+
+<script>
+// --- Standalone app storage shim ---
+// Replaces the Claude-artifact window.storage API with real browser localStorage,
+// which is reliable and persists across app closes/reopens (unlike the artifact sandbox).
+window.storage = {
+  async get(key, shared){
+    const raw = localStorage.getItem('wb:' + key);
+    if(raw === null) throw new Error('Key not found: ' + key);
+    return { key, value: raw, shared: !!shared };
+  },
+  async set(key, value, shared){
+    localStorage.setItem('wb:' + key, value);
+    return { key, value, shared: !!shared };
+  },
+  async delete(key, shared){
+    const existed = localStorage.getItem('wb:' + key) !== null;
+    localStorage.removeItem('wb:' + key);
+    return { key, deleted: existed, shared: !!shared };
+  },
+  async list(prefix, shared){
+    const full = 'wb:' + (prefix || '');
+    const keys = [];
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith(full)) keys.push(k.slice(3));
+    }
+    return { keys, prefix, shared: !!shared };
+  }
+};
+
+// Register service worker for offline support (no-op if unsupported)
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+  });
+}
+// --- End standalone app additions ---
+const SEED = [
+  {
+    "id": "bbq-lemon-chicken",
+    "v": 5,
+    "title": "BBQ Lemon-Herb Chicken with Air Fryer Potatoes & Veg",
+    "method": "bbq",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 560,
+      "prot": 45,
+      "carb": 42,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "a": 8,
+        "u": "",
+        "n": "boneless, skinless chicken thighs",
+        "k": "chicken_thigh"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lemon, zested + juiced (~60g each)",
+        "k": "lemon"
+      },
+      {
+        "a": 4,
+        "u": "cloves",
+        "n": "garlic, minced",
+        "k": "garlic"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "dried oregano",
+        "k": "dried_oregano"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "salt",
+        "k": "salt"
+      },
+      {
+        "a": 600,
+        "u": "g",
+        "n": "baby potatoes, halved",
+        "k": "baby_potatoes"
+      },
+      {
+        "a": 4,
+        "u": "",
+        "n": "zucchini, thick rounds (~200g each)",
+        "k": "zucchini"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "red onion, cut into wedges (~150g each)",
+        "k": "red_onion"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "olive oil, for veg",
+        "k": "olive_oil"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "salt and pepper, for veg",
+        "k": "salt"
+      }
+    ],
+    "steps": [
+      "Marinate chicken in oil, lemon zest/juice, garlic, oregano and salt for 5 min while the grill heats.",
+      "Toss halved baby potatoes in a little oil, salt and pepper. Air fry at 200°C for 15-18 min, shaking halfway, until crisp.",
+      "Toss zucchini and red onion in the remaining oil, salt and pepper. Add to the air fryer alongside the potatoes for the last 8-10 min (or air fry in a second batch if space is tight).",
+      "Meanwhile, grill chicken over direct medium-high heat, 6-7 min per side until charred and cooked through.",
+      "Plate chicken with the air-fried potatoes and veg, finished with an extra squeeze of lemon."
+    ],
+    "note": "Grill and air fryer run at the same time, so this comes together in about 20 minutes with minimal standing over pots."
+  },
+  {
+    "id": "af-salmon-asparagus",
+    "v": 5,
+    "title": "Air Fryer Salmon & Asparagus with Balsamic Brown Butter & Rice",
+    "method": "airfryer",
+    "protein": "Salmon",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 680,
+      "prot": 39,
+      "carb": 45,
+      "fat": 38
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "salmon fillets (150g each)",
+        "k": "salmon_fillet"
+      },
+      {
+        "a": 2,
+        "u": "bunch",
+        "n": "asparagus, trimmed (~200g)",
+        "k": "asparagus"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lemon, sliced + zested (~60g each)",
+        "k": "lemon"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "garlic powder",
+        "k": "garlic_powder"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "rice, uncooked",
+        "k": "rice"
+      },
+      {
+        "a": 60,
+        "u": "g",
+        "n": "butter, for balsamic brown butter",
+        "k": "butter"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "balsamic vinegar",
+        "k": "balsamic_vinegar"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "soy sauce",
+        "k": "soy_sauce"
+      },
+      {
+        "a": 2,
+        "u": "handful",
+        "n": "parsley, chopped",
+        "k": "parsley"
+      }
+    ],
+    "steps": [
+      "Cook rice according to package.",
+      "Toss asparagus in oil, season salmon with garlic powder, salt and pepper.",
+      "Air fry at 200°C for 8-10 min, salmon skin-down, asparagus alongside.",
+      "Meanwhile, melt butter in a pan over medium heat until it foams and turns nutty brown, 3-4 min — watch closely so it doesn't burn.",
+      "Stir in balsamic vinegar and soy sauce, remove from heat.",
+      "Top salmon and asparagus with lemon slices, drizzle the balsamic brown butter over the whole plate, scatter with parsley, serve over rice."
+    ],
+    "note": "Watch the butter closely once it starts foaming — it goes from nutty brown to burnt in under a minute."
+  },
+  {
+    "id": "sw-chicken-stirfry",
+    "v": 4,
+    "title": "Stovetop Chicken & Veg Stir-Fry",
+    "method": "stovetop",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 480,
+      "prot": 37,
+      "carb": 40,
+      "fat": 18
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "chicken breasts, sliced",
+        "k": "chicken_breast"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "broccoli head, cut into florets (~300g each)",
+        "k": "broccoli"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "red bell pepper, sliced (~160g each)",
+        "k": "bell_pepper"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "soy sauce",
+        "k": "soy_sauce"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "sesame oil",
+        "k": "sesame_oil"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "ginger, grated",
+        "k": "ginger"
+      },
+      {
+        "a": 400,
+        "u": "g",
+        "n": "rice, uncooked",
+        "k": "rice"
+      },
+      {
+        "a": 60,
+        "u": "g",
+        "n": "cashews",
+        "k": "cashews"
+      }
+    ],
+    "steps": [
+      "Cook rice according to package.",
+      "Stir-fry chicken in sesame oil until nearly cooked, remove.",
+      "Stir-fry broccoli and pepper 3-4 min, add ginger and soy sauce, return chicken, toss 1 min.",
+      "Scatter cashews over the top, serve over rice."
+    ],
+    "note": "Swap veg for whatever needs using up — ratio stays the same."
+  },
+  {
+    "id": "batch-pulled-pork",
+    "v": 4,
+    "title": "Sunday Batch: Pulled Pork Wraps with Pepper Slaw",
+    "method": "batch",
+    "protein": "Pork",
+    "baseServings": 4,
+    "time": "4 hr (mostly hands-off)",
+    "macros": {
+      "cal": 560,
+      "prot": 40,
+      "carb": 35,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "a": 1.2,
+        "u": "kg",
+        "n": "pork shoulder",
+        "k": "pork_shoulder"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "smoked paprika",
+        "k": "smoked_paprika"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "brown sugar",
+        "k": "brown_sugar"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "salt",
+        "k": "salt"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "BBQ sauce (to finish)",
+        "k": "bbq_sauce"
+      },
+      {
+        "a": 8,
+        "u": "",
+        "n": "small flour tortillas",
+        "k": "tortillas"
+      },
+      {
+        "a": 1,
+        "u": "",
+        "n": "red onion, thinly sliced (~150g each)",
+        "k": "red_onion"
+      },
+      {
+        "a": 200,
+        "u": "g",
+        "n": "red cabbage, thinly sliced",
+        "k": "red_cabbage"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "red wine vinegar",
+        "k": "red_wine_vinegar"
+      }
+    ],
+    "steps": [
+      "Rub pork with paprika, brown sugar and salt. Roast at 150°C, covered, for 3.5-4 hrs until it shreds easily.",
+      "Shred with two forks, discard excess fat, mix through a little BBQ sauce.",
+      "Thinly slice red onion and red cabbage, toss with vinegar and a pinch of salt for a quick slaw.",
+      "Warm tortillas, fill with pulled pork and slaw to serve.",
+      "Portion pork, slaw and tortillas into containers separately."
+    ],
+    "note": "Keep the pork, slaw and tortillas stored separately so the wraps don't go soggy — assemble fresh each day."
+  },
+  {
+    "id": "batch-greek-sheetpan",
+    "v": 4,
+    "title": "Sunday Batch: Greek Sheet-Pan Chicken with Potatoes",
+    "method": "batch",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "50 min",
+    "macros": {
+      "cal": 520,
+      "prot": 40,
+      "carb": 38,
+      "fat": 18
+    },
+    "ingredients": [
+      {
+        "a": 8,
+        "u": "",
+        "n": "chicken thighs, boneless",
+        "k": "chicken_thigh"
+      },
+      {
+        "a": 600,
+        "u": "g",
+        "n": "baby potatoes, halved",
+        "k": "baby_potatoes"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "zucchini, chunked (~200g each)",
+        "k": "zucchini"
+      },
+      {
+        "a": 1,
+        "u": "",
+        "n": "red onion, chunked (~150g each)",
+        "k": "red_onion"
+      },
+      {
+        "a": 200,
+        "u": "g",
+        "n": "cherry tomatoes",
+        "k": "cherry_tomatoes"
+      },
+      {
+        "a": 100,
+        "u": "g",
+        "n": "feta, crumbled",
+        "k": "feta"
+      },
+      {
+        "a": 3,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "dried oregano",
+        "k": "dried_oregano"
+      },
+      {
+        "a": 1,
+        "u": "",
+        "n": "lemon, juiced (~60g each)",
+        "k": "lemon"
+      }
+    ],
+    "steps": [
+      "Toss chicken, potatoes and veg with oil, oregano, lemon juice, salt and pepper on a sheet pan.",
+      "Roast at 200°C for 35-40 min, tossing once, until chicken is cooked, potatoes are tender and veg is charred at the edges.",
+      "Scatter feta over the top before portioning into 4 containers."
+    ],
+    "note": "Potatoes go straight on the same pan — no extra dish, just a slightly longer roast."
+  },
+  {
+    "id": "sw-cod-chorizo",
+    "v": 4,
+    "title": "Stovetop Cod with Chorizo, Zucchini & Butter Beans",
+    "method": "stovetop",
+    "protein": "Cod",
+    "baseServings": 4,
+    "time": "25 min",
+    "macros": {
+      "cal": 480,
+      "prot": 38,
+      "carb": 28,
+      "fat": 22
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "cod fillets (150g each)",
+        "k": "cod_fillet"
+      },
+      {
+        "a": 200,
+        "u": "g",
+        "n": "chorizo, sliced",
+        "k": "chorizo"
+      },
+      {
+        "a": 3,
+        "u": "",
+        "n": "zucchini, sliced (~200g each)",
+        "k": "zucchini"
+      },
+      {
+        "a": 400,
+        "u": "g",
+        "n": "cherry tomatoes",
+        "k": "cherry_tomatoes"
+      },
+      {
+        "a": 800,
+        "u": "g",
+        "n": "butter beans, drained",
+        "k": "butter_beans"
+      },
+      {
+        "a": 4,
+        "u": "cloves",
+        "n": "garlic, minced",
+        "k": "garlic"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "smoked paprika",
+        "k": "smoked_paprika"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      }
+    ],
+    "steps": [
+      "Heat oil in a pan, fry chorizo until crisp and the fat renders. Remove chorizo, keep the oil in the pan.",
+      "Add zucchini, cook 4-5 min until softened.",
+      "Add garlic, smoked paprika, cherry tomatoes and butter beans, simmer 5 min.",
+      "Season cod, nestle into the pan, cover and cook 6-8 min until it flakes easily.",
+      "Return chorizo to the pan, spoon everything over the cod to serve."
+    ],
+    "note": "Chorizo does the flavor work here — no need for extra seasoning beyond the paprika and garlic."
+  },
+  {
+    "id": "sw-lemon-chicken-penne",
+    "v": 3,
+    "title": "Lemon Chicken & Zucchini Penne",
+    "method": "stovetop",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 480,
+      "prot": 34,
+      "carb": 48,
+      "fat": 14
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "chicken breasts, sliced",
+        "k": "chicken_breast"
+      },
+      {
+        "a": 400,
+        "u": "g",
+        "n": "penne",
+        "k": "pasta_penne"
+      },
+      {
+        "a": 4,
+        "u": "",
+        "n": "zucchini, sliced into half-moons (~200g each)",
+        "k": "zucchini"
+      },
+      {
+        "a": 4,
+        "u": "cloves",
+        "n": "garlic, minced",
+        "k": "garlic"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lemon, zested + juiced (~60g each)",
+        "k": "lemon"
+      },
+      {
+        "a": 120,
+        "u": "g",
+        "n": "spinach",
+        "k": "spinach"
+      },
+      {
+        "a": 60,
+        "u": "g",
+        "n": "parmesan, grated",
+        "k": "parmesan"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      }
+    ],
+    "steps": [
+      "Cook penne according to package, reserving a splash of pasta water.",
+      "Sear chicken in olive oil until golden and cooked through, remove and slice.",
+      "In the same pan, sauté zucchini and garlic 3-4 min until just tender.",
+      "Add lemon zest, juice, spinach and a splash of pasta water, wilt spinach for 1 min.",
+      "Toss in drained penne and sliced chicken, finish with parmesan and black pepper."
+    ],
+    "note": "Light and brothy rather than creamy — a different lane from the salmon pasta below."
+  },
+  {
+    "id": "af-harissa-halloumi-bowl",
+    "v": 3,
+    "title": "Air Fryer Harissa Halloumi & Sweet Potato Bowl",
+    "method": "airfryer",
+    "protein": "Halloumi (veggie)",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 560,
+      "prot": 24,
+      "carb": 52,
+      "fat": 27
+    },
+    "ingredients": [
+      {
+        "a": 450,
+        "u": "g",
+        "n": "halloumi, cubed",
+        "k": "halloumi"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "sweet potato, cubed (~200g each)",
+        "k": "sweet_potato"
+      },
+      {
+        "a": 800,
+        "u": "g",
+        "n": "chickpeas, drained",
+        "k": "chickpeas"
+      },
+      {
+        "a": 4,
+        "u": "tsp",
+        "n": "harissa paste",
+        "k": "harissa"
+      },
+      {
+        "a": 120,
+        "u": "g",
+        "n": "spinach",
+        "k": "spinach"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "tahini",
+        "k": "tahini"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lemon, juiced (~60g each)",
+        "k": "lemon"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      }
+    ],
+    "steps": [
+      "Toss sweet potato in 1 tbsp oil, salt and pepper. Air fry at 200°C for 12 min.",
+      "Toss chickpeas in harissa and remaining oil, add to the air fryer alongside the sweet potato for the final 8 min.",
+      "Add halloumi cubes for the last 5 min, until golden.",
+      "Whisk tahini with lemon juice and a splash of water into a dressing.",
+      "Build bowls with spinach, sweet potato, chickpeas and halloumi, drizzle with dressing."
+    ],
+    "note": "Harissa and tahini are pantry staples that keep for weeks — only the spinach and halloumi are true perishables."
+  },
+  {
+    "id": "batch-smoked-salmon-pasta",
+    "v": 1,
+    "title": "Sunday Batch: Creamy Smoked Salmon Pasta",
+    "method": "batch",
+    "protein": "Smoked Salmon",
+    "baseServings": 4,
+    "time": "25 min",
+    "macros": {
+      "cal": 730,
+      "prot": 32,
+      "carb": 73,
+      "fat": 32
+    },
+    "ingredients": [
+      {
+        "a": 400,
+        "u": "g",
+        "n": "tagliatelle",
+        "k": "pasta_tagliatelle"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "smoked salmon",
+        "k": "smoked_salmon"
+      },
+      {
+        "a": 200,
+        "u": "ml",
+        "n": "double cream",
+        "k": "double_cream"
+      },
+      {
+        "a": 100,
+        "u": "ml",
+        "n": "milk",
+        "k": "milk"
+      },
+      {
+        "a": 40,
+        "u": "g",
+        "n": "parmesan, grated",
+        "k": "parmesan"
+      },
+      {
+        "a": 1,
+        "u": "tbsp",
+        "n": "butter",
+        "k": "butter"
+      },
+      {
+        "a": 1,
+        "u": "clove",
+        "n": "garlic, pressed",
+        "k": "garlic"
+      },
+      {
+        "a": 1,
+        "u": "tsp",
+        "n": "lemon juice",
+        "k": "lemon"
+      },
+      {
+        "a": 1,
+        "u": "handful",
+        "n": "fresh dill",
+        "k": "fresh_dill"
+      },
+      {
+        "a": 1,
+        "u": "handful",
+        "n": "chives, chopped",
+        "k": "chives"
+      }
+    ],
+    "steps": [
+      "Cook tagliatelle according to package.",
+      "Melt butter in a pan, add garlic, cook briefly until fragrant.",
+      "Add cream and milk, simmer gently 3-4 min.",
+      "Stir in parmesan until melted, season with lemon juice, salt and pepper.",
+      "Flake in smoked salmon, warm through gently without boiling.",
+      "Toss with drained pasta, garnish with fresh dill, chives and black pepper."
+    ],
+    "note": "Richest dish on the board — the cream sauce is best within 3-4 days and doesn't freeze well, unlike your other batch dishes."
+  },
+  {
+    "id": "sw-chorizo-potato-hash",
+    "v": 4,
+    "title": "Chorizo & Baby Potato Hash with Eggs",
+    "method": "stovetop",
+    "protein": "Chorizo & Eggs",
+    "baseServings": 4,
+    "time": "25 min",
+    "macros": {
+      "cal": 520,
+      "prot": 27,
+      "carb": 32,
+      "fat": 30
+    },
+    "ingredients": [
+      {
+        "a": 200,
+        "u": "g",
+        "n": "chorizo, sliced",
+        "k": "chorizo"
+      },
+      {
+        "a": 600,
+        "u": "g",
+        "n": "baby potatoes, diced small",
+        "k": "baby_potatoes"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "zucchini, diced (~200g each)",
+        "k": "zucchini"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "red onion, diced (~150g each)",
+        "k": "red_onion"
+      },
+      {
+        "a": 8,
+        "u": "",
+        "n": "eggs",
+        "k": "eggs"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "olive oil",
+        "k": "olive_oil"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "smoked paprika",
+        "k": "smoked_paprika"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "salt and pepper",
+        "k": "salt"
+      }
+    ],
+    "steps": [
+      "Heat oil in a pan, add diced potatoes, cook 10-12 min over medium heat until tender and starting to crisp, stirring occasionally.",
+      "Add chorizo, zucchini and red onion, cook 5-6 min until the chorizo is crisp and veg has softened.",
+      "Stir in smoked paprika, season with salt and pepper.",
+      "Make 4 small wells in the hash, crack an egg into each. Cover and cook 4-5 min until eggs are set to your liking.",
+      "Serve straight from the pan."
+    ],
+    "note": "Built to use up the chorizo and baby potatoes left over from the cod dish and the lemon chicken/sheet-pan chicken."
+  },
+  {
+    "id": "af-tandoori-chicken",
+    "v": 2,
+    "title": "Air Fryer Tandoori Chicken with Cucumber Raita",
+    "method": "airfryer",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "25 min (mostly marinating)",
+    "macros": {
+      "cal": 670,
+      "prot": 52,
+      "carb": 46,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "a": 8,
+        "u": "",
+        "n": "boneless, skinless chicken thighs",
+        "k": "chicken_thigh"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "plain yogurt, for marinade",
+        "k": "yogurt"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "tandoori spice paste",
+        "k": "tandoori_spice"
+      },
+      {
+        "a": 4,
+        "u": "cloves",
+        "n": "garlic, minced",
+        "k": "garlic"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "ginger, grated",
+        "k": "ginger"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lemon, juiced (~60g each)",
+        "k": "lemon"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "rice, uncooked",
+        "k": "rice"
+      },
+      {
+        "a": 1,
+        "u": "",
+        "n": "cucumber, diced (~150g)",
+        "k": "cucumber"
+      },
+      {
+        "a": 200,
+        "u": "g",
+        "n": "plain yogurt, for raita",
+        "k": "yogurt"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "mint, chopped",
+        "k": "mint"
+      }
+    ],
+    "steps": [
+      "Mix 150g yogurt, tandoori spice, garlic, ginger and half the lemon juice. Marinate chicken thighs at least 15 min (or overnight for best flavor).",
+      "Air fry chicken at 200°C for 16-18 min, turning halfway, until charred and cooked through.",
+      "Cook rice according to package.",
+      "Mix remaining yogurt with diced cucumber, mint and a squeeze of lemon for the raita.",
+      "Serve chicken over rice with raita on the side."
+    ],
+    "note": "A genuinely different flavor lane from the rest of the board — nothing else uses yogurt-based marinades."
+  },
+  {
+    "id": "af-gochujang-chicken",
+    "v": 2,
+    "title": "Air Fryer Korean Gochujang Chicken Bites",
+    "method": "airfryer",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 560,
+      "prot": 42,
+      "carb": 48,
+      "fat": 13
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "chicken breasts, cubed",
+        "k": "chicken_breast"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "cornstarch",
+        "k": "cornstarch"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "gochujang paste",
+        "k": "gochujang"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "soy sauce",
+        "k": "soy_sauce"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "honey",
+        "k": "honey"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "sesame oil",
+        "k": "sesame_oil"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "rice, uncooked",
+        "k": "rice"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "spring onion, sliced",
+        "k": "spring_onion"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "sesame seeds",
+        "k": "sesame_seeds"
+      }
+    ],
+    "steps": [
+      "Toss cubed chicken in cornstarch. Air fry at 200°C for 12-14 min, shaking halfway, until crisp and cooked through.",
+      "Cook rice according to package.",
+      "Whisk gochujang, soy sauce, honey and sesame oil in a small pan, warm gently 1-2 min until glossy.",
+      "Toss the crispy chicken in the glaze.",
+      "Serve over rice, topped with spring onion and sesame seeds."
+    ],
+    "note": "Gochujang isn't reliably stocked at Aldi UK — worth checking a larger supermarket or Asian grocer for that one item; everything else on this dish is standard."
+  },
+  {
+    "id": "af-peanut-satay-skewers",
+    "v": 2,
+    "title": "Air Fryer Peanut-Lime Chicken Satay Skewers",
+    "method": "airfryer",
+    "protein": "Chicken",
+    "baseServings": 4,
+    "time": "20 min",
+    "macros": {
+      "cal": 560,
+      "prot": 42,
+      "carb": 36,
+      "fat": 24
+    },
+    "ingredients": [
+      {
+        "a": 4,
+        "u": "",
+        "n": "chicken breasts, sliced into strips",
+        "k": "chicken_breast"
+      },
+      {
+        "a": 4,
+        "u": "tbsp",
+        "n": "peanut butter",
+        "k": "peanut_butter"
+      },
+      {
+        "a": 2,
+        "u": "tbsp",
+        "n": "soy sauce",
+        "k": "soy_sauce"
+      },
+      {
+        "a": 2,
+        "u": "",
+        "n": "lime, juiced",
+        "k": "lime"
+      },
+      {
+        "a": 2,
+        "u": "tsp",
+        "n": "chili flakes",
+        "k": "chili_flakes"
+      },
+      {
+        "a": 300,
+        "u": "g",
+        "n": "rice, uncooked",
+        "k": "rice"
+      },
+      {
+        "a": 1,
+        "u": "",
+        "n": "cucumber, sliced (~150g)",
+        "k": "cucumber"
+      },
+      {
+        "a": 8,
+        "u": "",
+        "n": "wooden skewers",
+        "k": "skewers"
+      }
+    ],
+    "steps": [
+      "Toss chicken strips in peanut butter, soy sauce, half the lime juice and chili flakes. Marinate 10 min.",
+      "Thread onto skewers, air fry at 200°C for 10-12 min, turning halfway, until cooked through and lightly charred.",
+      "Cook rice according to package.",
+      "Serve skewers over rice with sliced cucumber, remaining lime juice squeezed over."
+    ],
+    "note": "A flavor lane the board didn't have at all yet — peanut and lime rather than lemon-herb or Mediterranean spice."
+  }
+];
+
+const METHOD_LABELS = {bbq:'On the Grill', airfryer:'Air Fryer', stovetop:'Stovetop', oven:'Oven', batch:'Sunday Batch'};
+let recipes = [];
+let activeMethod = 'all';
+let searchTerm = '';
+let dialServings = {}; // per-recipe chosen servings this session
+// Aldi UK reference table — approximate prices/pack sizes, checked against aldi.co.uk.
+// mode 'pack': fixed retail pack, rounds up, tracks leftover. mode 'loose': sold by weight/each, no fixed pack.
+const PRICE_REF = {
+  chicken_thigh:      {label:'Chicken thigh fillets', cat:'perishable', mode:'pack', unit:'g', pack:600, price:4.39, conv:{'':120}},
+  chicken_breast:     {label:'Chicken breast fillets', cat:'perishable', mode:'pack', unit:'g', pack:300, price:2.29, conv:{'':175}},
+  salmon_fillet:      {label:'Salmon fillets', cat:'perishable', mode:'pack', unit:'g', pack:240, price:3.59, conv:{'':150}},
+  cod_fillet:         {label:'Cod fillets', cat:'perishable', mode:'pack', unit:'g', pack:250, price:4.99, conv:{'':150}},
+  smoked_salmon:      {label:'Smoked salmon', cat:'perishable', mode:'pack', unit:'g', pack:100, price:2.49, conv:{'g':1}},
+  chorizo:            {label:'Chorizo', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.89, conv:{'g':1}},
+  halloumi:           {label:'Halloumi', cat:'perishable', mode:'pack', unit:'g', pack:225, price:1.99, conv:{'g':1}},
+  feta:               {label:'Feta', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.79, conv:{'g':1}},
+  double_cream:       {label:'Double cream', cat:'perishable', mode:'pack', unit:'ml', pack:300, price:1.65, conv:{'ml':1}},
+  parmesan:           {label:'Parmesan', cat:'perishable', mode:'pack', unit:'g', pack:150, price:2.29, conv:{'g':1}},
+  butter:             {label:'Butter', cat:'pantry', mode:'pack', unit:'g', pack:250, price:1.55, conv:{'tbsp':14}},
+  butter_beans:       {label:'Butter beans (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.65, conv:{'g':1}},
+  chickpeas:          {label:'Chickpeas (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.55, conv:{'g':1}},
+  spinach:            {label:'Spinach', cat:'perishable', mode:'pack', unit:'g', pack:240, price:1.09, conv:{'g':1}},
+  cherry_tomatoes:    {label:'Cherry tomatoes', cat:'perishable', mode:'pack', unit:'g', pack:250, price:1.09, conv:{'g':1}},
+  asparagus:          {label:'Asparagus', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.49, conv:{'bunch':200}},
+  baby_potatoes:      {label:'Baby potatoes', cat:'perishable', mode:'pack', unit:'g', pack:1000, price:1.15, conv:{'g':1}},
+  rice:               {label:'Rice', cat:'pantry', mode:'pack', unit:'g', pack:1000, price:1.15, conv:{'g':1}},
+  pasta_penne:        {label:'Penne', cat:'pantry', mode:'pack', unit:'g', pack:500, price:0.75, conv:{'g':1}},
+  pasta_tagliatelle:  {label:'Tagliatelle', cat:'pantry', mode:'pack', unit:'g', pack:500, price:0.95, conv:{'g':1}},
+  couscous:           {label:'Couscous', cat:'pantry', mode:'pack', unit:'g', pack:500, price:1.19, conv:{'g':1}},
+  tortillas:          {label:'Flour tortillas', cat:'pantry', mode:'pack', unit:'count', pack:8, price:1.09, conv:{'':1}},
+  cashews:            {label:'Cashews', cat:'pantry', mode:'pack', unit:'g', pack:200, price:2.19, conv:{'g':1}},
+  olive_oil:          {label:'Olive oil', cat:'pantry', mode:'pack', unit:'ml', pack:500, price:3.49, conv:{'tbsp':15,'ml':1}},
+  sesame_oil:         {label:'Sesame oil', cat:'pantry', mode:'pack', unit:'ml', pack:250, price:2.29, conv:{'tbsp':15,'tsp':5,'ml':1}},
+  soy_sauce:          {label:'Soy sauce', cat:'pantry', mode:'pack', unit:'ml', pack:150, price:0.85, conv:{'tbsp':15,'tsp':5,'ml':1}},
+  bbq_sauce:          {label:'BBQ sauce', cat:'pantry', mode:'pack', unit:'ml', pack:480, price:1.09, conv:{'tbsp':15,'ml':1}},
+  red_wine_vinegar:   {label:'Red wine vinegar', cat:'pantry', mode:'pack', unit:'ml', pack:350, price:1.19, conv:{'tbsp':15,'ml':1}},
+  balsamic_vinegar:   {label:'Balsamic vinegar', cat:'pantry', mode:'pack', unit:'ml', pack:250, price:1.29, conv:{'tsp':5,'tbsp':15,'ml':1}},
+  tahini:             {label:'Tahini', cat:'pantry', mode:'pack', unit:'g', pack:300, price:3.29, conv:{'tbsp':15,'g':1}},
+  harissa:            {label:'Harissa paste', cat:'pantry', mode:'pack', unit:'g', pack:90, price:1.39, conv:{'tsp':5,'tbsp':15,'g':1}},
+  milk:               {label:'Milk', cat:'pantry', mode:'pack', unit:'ml', pack:568, price:0.65, conv:{'ml':1}},
+  fresh_dill:         {label:'Fresh dill', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.75, conv:{'handful':1,'tsp':0.15}},
+  chives:             {label:'Chives', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.85, conv:{'handful':1}},
+  parsley:            {label:'Parsley', cat:'perishable', mode:'pack', unit:'g', pack:30, price:0.65, conv:{'g':1}},
+
+  zucchini:           {label:'Zucchini', cat:'perishable', mode:'loose', unit:'count', price:0.55, conv:{'':1}},
+  red_onion:          {label:'Red onion', cat:'perishable', mode:'loose', unit:'count', price:0.22, conv:{'':1}},
+  bell_pepper:        {label:'Bell pepper', cat:'perishable', mode:'loose', unit:'count', price:0.55, conv:{'':1}},
+  red_cabbage:        {label:'Red cabbage', cat:'perishable', mode:'pack', unit:'g', pack:900, price:0.85, conv:{'g':1}},
+  lemon:              {label:'Lemon', cat:'perishable', mode:'loose', unit:'count', price:0.35, conv:{'':1,'tsp':1/9,'tbsp':1/3}},
+  broccoli:           {label:'Broccoli', cat:'perishable', mode:'loose', unit:'count', price:0.75, conv:{'':1}},
+  sweet_potato:       {label:'Sweet potato', cat:'perishable', mode:'loose', unit:'count', price:0.55, conv:{'':1}},
+  garlic:             {label:'Garlic', cat:'pantry', mode:'loose', unit:'clove', price:0.05, conv:{'cloves':1,'clove':1}},
+  pork_shoulder:      {label:'Pork shoulder', cat:'perishable', mode:'loose', unit:'kg', price:4.60, conv:{'kg':1,'g':0.001}},
+  beef_flank:         {label:'Flank/skirt steak', cat:'perishable', mode:'loose', unit:'kg', price:13.00, conv:{'g':0.001,'kg':1}},
+  beef_sirloin:       {label:'Sirloin steak', cat:'perishable', mode:'loose', unit:'count', price:3.20, conv:{'':1}},
+  pork_loin:          {label:'Pork loin steaks', cat:'perishable', mode:'loose', unit:'kg', price:6.23, conv:{'':0.2,'kg':1,'g':0.001}},
+  apple_juice:        {label:'Apple juice/cider', cat:'pantry', mode:'pack', unit:'ml', pack:1000, price:1.09, conv:{'ml':1}},
+  cider_vinegar:      {label:'Cider vinegar', cat:'pantry', mode:'pack', unit:'ml', pack:350, price:1.19, conv:{'tbsp':15,'ml':1}},
+  thyme:              {label:'Dried thyme', cat:'pantry', mode:'loose', unit:'tsp', price:0.05, conv:{'tsp':1}},
+
+  smoked_paprika:     {label:'Smoked paprika', cat:'pantry', mode:'loose', unit:'tsp', price:0.06, conv:{'tsp':1,'tbsp':3}},
+  dried_oregano:      {label:'Dried oregano', cat:'pantry', mode:'loose', unit:'tsp', price:0.05, conv:{'tsp':1}},
+  chili_flakes:       {label:'Chili flakes', cat:'pantry', mode:'loose', unit:'tsp', price:0.05, conv:{'tsp':1}},
+  garlic_powder:      {label:'Garlic powder', cat:'pantry', mode:'loose', unit:'tsp', price:0.05, conv:{'tsp':1}},
+  brown_sugar:        {label:'Brown sugar', cat:'pantry', mode:'loose', unit:'tbsp', price:0.04, conv:{'tbsp':1}},
+  ginger:             {label:'Ginger', cat:'pantry', mode:'loose', unit:'tsp', price:0.08, conv:{'tsp':1}},
+  salt:               {label:'Salt', cat:'pantry', mode:'loose', unit:'tsp', price:0.02, conv:{'tsp':1}},
+  stock:              {label:'Stock/water', cat:'pantry', mode:'loose', unit:'ml', price:0.002, conv:{'ml':1}},
+  eggs:               {label:'Eggs', cat:'perishable', mode:'pack', unit:'count', pack:6, price:1.15, conv:{'':1}},
+  yogurt:             {label:'Plain yogurt', cat:'perishable', mode:'pack', unit:'g', pack:500, price:0.89, conv:{'g':1}},
+  tandoori_spice:     {label:'Tandoori spice paste', cat:'pantry', mode:'pack', unit:'g', pack:90, price:1.29, conv:{'tbsp':15,'g':1}},
+  cucumber:           {label:'Cucumber', cat:'perishable', mode:'loose', unit:'count', price:0.45, conv:{'':1}},
+  mint:               {label:'Fresh mint', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.65, conv:{'tsp':0.15,'handful':1}},
+  cornstarch:         {label:'Cornstarch', cat:'pantry', mode:'pack', unit:'g', pack:250, price:0.65, conv:{'tbsp':10,'g':1}},
+  gochujang:          {label:'Gochujang paste', cat:'pantry', mode:'pack', unit:'g', pack:250, price:3.49, conv:{'tbsp':15,'g':1}},
+  honey:              {label:'Honey', cat:'pantry', mode:'pack', unit:'g', pack:340, price:2.29, conv:{'tbsp':21,'g':1}},
+  spring_onion:       {label:'Spring onion', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.55, conv:{'':1}},
+  sesame_seeds:       {label:'Sesame seeds', cat:'pantry', mode:'pack', unit:'g', pack:100, price:0.85, conv:{'tsp':3,'g':1}},
+  peanut_butter:      {label:'Peanut butter', cat:'pantry', mode:'pack', unit:'g', pack:340, price:1.79, conv:{'tbsp':16,'g':1}},
+  lime:               {label:'Lime', cat:'perishable', mode:'loose', unit:'count', price:0.30, conv:{'':1}},
+  skewers:            {label:'Wooden skewers', cat:'pantry', mode:'loose', unit:'count', price:0.02, conv:{'':1}},
+};
+
+function convertAmount(ing){
+  const ref = PRICE_REF[ing.k];
+  if(!ref) return {qty:ing.a, unit:ing.u||''};
+  const factor = ref.conv[ing.u||''] ?? ref.conv[''] ?? 1;
+  return {qty: ing.a * factor, unit: ref.unit};
+}
+let weekPlan = {}; // recipeId -> servings, persists until cleared
+let checkedItems = {}; // ingredientKey -> bool, persists until cleared
+
+async function loadWeekPlan(){
+  try{ const res = await window.storage.get('weekPlan', false); weekPlan = (res && res.value) ? JSON.parse(res.value) : {}; }
+  catch(e){ weekPlan = {}; }
+  try{ const res2 = await window.storage.get('checkedItems', false); checkedItems = (res2 && res2.value) ? JSON.parse(res2.value) : {}; }
+  catch(e){ checkedItems = {}; }
+  renderWeekStrip();
+  render();
+}
+async function storageSetWithRetry(key, value, attempts=3){
+  let lastErr;
+  for(let i=0;i<attempts;i++){
+    try{
+      const result = await window.storage.set(key, value, false);
+      if(result) return result;
+      lastErr = new Error('empty response');
+    }catch(e){ lastErr = e; }
+    await new Promise(r=>setTimeout(r, 300*(i+1)));
+  }
+  throw lastErr;
+}
+
+async function saveWeekPlan(){
+  try{
+    await storageSetWithRetry('weekPlan', JSON.stringify(weekPlan));
+  }catch(e){ console.error('weekPlan save failed', e); showSaveWarning('Week plan failed to save after retries: '+e.message); }
+}
+async function saveChecked(){
+  try{ await storageSetWithRetry('checkedItems', JSON.stringify(checkedItems)); }
+  catch(e){ console.error('checkedItems save failed', e); }
+}
+function showSaveWarning(msg){
+  let warn = document.getElementById('saveWarning');
+  if(!warn){
+    warn = document.createElement('div');
+    warn.id = 'saveWarning';
+    warn.style.cssText = 'position:fixed;bottom:14px;left:14px;right:14px;background:#B5482A;color:#EDE6D6;padding:10px 14px;border-radius:5px;font-family:IBM Plex Mono,monospace;font-size:12px;z-index:100;text-align:center;';
+    document.body.appendChild(warn);
+  }
+  warn.textContent = msg;
+  clearTimeout(warn._t);
+  warn._t = setTimeout(()=>{ warn.remove(); }, 6000);
+}
+// Best-effort flush if the artifact is closed/hidden right after a change
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'hidden'){
+    try{ window.storage.set('weekPlan', JSON.stringify(weekPlan), false); }catch(e){}
+  }
+});
+
+function renderWeekStrip(){
+  const strip = document.getElementById('weekStrip');
+  const ids = Object.keys(weekPlan);
+  if(ids.length===0){ strip.style.display='none'; strip.innerHTML=''; return; }
+  strip.style.display='flex';
+  const chips = ids.map(id=>{
+    const r = recipes.find(x=>x.id===id);
+    return r ? `<span class="week-chip">${escapeHtml(r.title)} ×${weekPlan[id]}</span>` : '';
+  }).join('');
+  strip.innerHTML = chips + `<button class="cart-btn" id="openList">Shopping List</button>`;
+  document.getElementById('openList').addEventListener('click', openShoppingList);
+}
+
+function aggregateIngredients(){
+  const map = {}; // canonical key -> {names:Set, qty, unit}
+  Object.entries(weekPlan).forEach(([id,serv])=>{
+    const r = recipes.find(x=>x.id===id);
+    if(!r) return;
+    const factor = serv / r.baseServings;
+    r.ingredients.forEach(ing=>{
+      const key = ing.k || ('other_'+ing.n.toLowerCase());
+      const {qty, unit} = convertAmount(ing);
+      if(!map[key]) map[key] = {names:new Set(), qty:0, unit};
+      map[key].qty += qty*factor;
+      map[key].names.add(ing.n);
+    });
+  });
+  return Object.entries(map).map(([key,v])=>{
+    const ref = PRICE_REF[key];
+    const label = ref ? ref.label : Array.from(v.names)[0];
+    let packsNeeded=null, leftover=0, cost=0, mode='loose';
+    if(ref){
+      mode = ref.mode;
+      if(ref.mode==='pack'){
+        packsNeeded = Math.max(1, Math.ceil((v.qty - 1e-6) / ref.pack));
+        leftover = packsNeeded*ref.pack - v.qty;
+        cost = packsNeeded*ref.price;
+      } else if(ref.unit==='count'){
+        const count = Math.ceil(v.qty - 1e-6);
+        cost = count*ref.price;
+      } else { // kg, tsp, tbsp, ml loose
+        cost = v.qty*ref.price;
+      }
+    }
+    // which other planned recipes also use this key
+    const usedIn = Object.keys(weekPlan)
+      .map(id=>recipes.find(x=>x.id===id))
+      .filter(r=>r && r.ingredients.some(ing=>(ing.k||'')===key));
+    return {key, label, qty:v.qty, unit:v.unit, ref, mode, packsNeeded, leftover, cost, usedIn};
+  }).sort((a,b)=>{
+    const catA = a.ref && a.ref.cat==='perishable' ? 0 : 1;
+    const catB = b.ref && b.ref.cat==='perishable' ? 0 : 1;
+    return catA-catB || a.label.localeCompare(b.label);
+  });
+}
+
+function openShoppingList(){
+  document.getElementById('cardBody').innerHTML = shoppingListHtml(aggregateIngredients());
+  document.getElementById('overlay').classList.add('open');
+  bindShoppingList();
+}
+
+function shoppingListHtml(items){
+  const recipeCount = Object.keys(weekPlan).length;
+  const total = items.reduce((s,it)=>s+it.cost, 0);
+  const remaining = items.reduce((s,it)=>s+(checkedItems[it.key]?0:it.cost), 0);
+  const rows = items.map(it=>{
+    const isChecked = !!checkedItems[it.key];
+    const neededLabel = it.unit==='count'
+      ? `${round2(it.qty)}`
+      : `${round2(it.qty)}${it.unit}`;
+    let buyHtml = '';
+    if(it.mode==='pack'){
+      buyHtml = `<div class="buy-note">Buy: ${it.packsNeeded} × ${it.ref.pack}${it.ref.unit} pack</div>`;
+    } else if(it.unit==='count'){
+      buyHtml = `<div class="buy-note">Buy: ${Math.ceil(it.qty-1e-6)}</div>`;
+    }
+    let leftoverHtml = '';
+    if(it.mode==='pack' && it.leftover > 0.5 && it.ref.cat==='perishable'){
+      const others = it.usedIn.slice(0,2).map(r=>escapeHtml(r.title));
+      leftoverHtml = `<div class="leftover-note">~${round2(it.leftover)}${it.ref.unit} left over${others.length?(' — also used in: '+others.join(', ')):''}</div>`;
+    }
+    return `<li class="shop-item ${isChecked?'checked':''}" data-key="${escapeHtml(it.key)}" data-cost="${it.cost}">
+      <input type="checkbox" ${isChecked?'checked':''}>
+      <div style="flex:1;">
+        <div class="shop-row-top"><span>${neededLabel} ${escapeHtml(it.label)}</span><span class="shop-cost">£${it.cost.toFixed(2)}</span></div>
+        ${buyHtml}
+        ${leftoverHtml}
+      </div>
+    </li>`;
+  }).join('');
+  return `
+    <div class="card-top">
+      <h2>Shopping List</h2>
+      <button class="close" id="closeCard">✕</button>
+    </div>
+    <div class="row-meta" style="margin-bottom:10px;">${items.length} item${items.length!==1?'s':''} across ${recipeCount} recipe${recipeCount!==1?'s':''}</div>
+    <div class="macro-strip" style="margin-bottom:16px;">
+      <div class="macro-cell"><div class="macro-val">£${total.toFixed(2)}</div><div class="macro-key">Full total</div></div>
+      <div class="macro-cell"><div class="macro-val" id="remainingTotal">£${remaining.toFixed(2)}</div><div class="macro-key">Left to buy</div></div>
+    </div>
+    <div class="row-meta" style="margin:-8px 0 12px;">Bold amount is what the recipes need — use that at any store. "Buy" line is Aldi's pack size. Tick items off as you shop — "Left to buy" updates live.</div>
+    <ul class="shop-list">${rows || '<li class="shop-item">Nothing planned yet.</li>'}</ul>
+    <div class="note">Prices are approximate Aldi UK estimates, not live pricing — treat as a rough guide.</div>
+    <button class="del-btn" id="clearPlan">Clear week plan</button>
+  `;
+}
+
+function updateRemainingTotal(){
+  const items = document.querySelectorAll('.shop-item[data-key]');
+  let remaining = 0;
+  items.forEach(li=>{
+    if(!li.classList.contains('checked')) remaining += parseFloat(li.dataset.cost) || 0;
+  });
+  const el = document.getElementById('remainingTotal');
+  if(el) el.textContent = '£' + remaining.toFixed(2);
+}
+
+function bindShoppingList(){
+  document.getElementById('closeCard').addEventListener('click', closeCard);
+  document.querySelectorAll('.shop-item[data-key]').forEach(li=>{
+    li.addEventListener('click', async (e)=>{
+      if(e.target.tagName==='INPUT') return;
+      const key = li.dataset.key;
+      checkedItems[key] = !checkedItems[key];
+      li.classList.toggle('checked', checkedItems[key]);
+      const box = li.querySelector('input'); if(box) box.checked = checkedItems[key];
+      updateRemainingTotal();
+      await saveChecked();
+    });
+    const box = li.querySelector('input');
+    if(box) box.addEventListener('change', async ()=>{
+      const key = li.dataset.key;
+      checkedItems[key] = box.checked;
+      li.classList.toggle('checked', checkedItems[key]);
+      updateRemainingTotal();
+      await saveChecked();
+    });
+  });
+  const clearBtn = document.getElementById('clearPlan');
+  if(clearBtn) clearBtn.addEventListener('click', async ()=>{
+    if(!confirm('Clear your entire week plan and shopping list?')) return;
+    weekPlan = {}; checkedItems = {};
+    await saveWeekPlan(); await saveChecked();
+    closeCard();
+    renderWeekStrip();
+  });
+}
+
+function computeSynergy(recipe){
+  const myKeys = new Set(recipe.ingredients.map(i=>i.k));
+  const scores = recipes.filter(r=>r.id!==recipe.id).map(r=>{
+    const shared = r.ingredients.filter(i=>myKeys.has(i.k)).map(i=>i.k);
+    const uniqueShared = new Set(shared);
+    return {title:r.title, count:uniqueShared.size};
+  }).filter(s=>s.count>0).sort((a,b)=>b.count-a.count);
+  return scores.slice(0,3);
+}
+
+async function loadRecipes(){
+  let stored = null;
+  try{
+    const res = await window.storage.get('recipes', false);
+    stored = res && res.value ? JSON.parse(res.value) : null;
+  }catch(e){ stored = null; }
+
+  if(!stored){
+    // first ever load
+    recipes = SEED.map(r=>({...r}));
+    const seedVersions = {};
+    SEED.forEach(r=> seedVersions[r.id] = r.v||1);
+    await persist();
+    try{ await window.storage.set('seedVersions', JSON.stringify(seedVersions), false); }catch(e){}
+    render();
+    return;
+  }
+
+  let seedVersions = {};
+  try{
+    const svRes = await window.storage.get('seedVersions', false);
+    seedVersions = svRes && svRes.value ? JSON.parse(svRes.value) : {};
+  }catch(e){ seedVersions = {}; }
+
+  let changed = false;
+  SEED.forEach(seedRecipe=>{
+    const sv = seedRecipe.v || 1;
+    const knownV = seedVersions[seedRecipe.id];
+    const idx = stored.findIndex(r=>r.id===seedRecipe.id);
+    if(knownV === undefined){
+      // never seen this seed id before
+      if(idx === -1){
+        stored.push({...seedRecipe});
+        changed = true;
+      }
+      seedVersions[seedRecipe.id] = sv;
+      changed = true;
+    } else if(sv > knownV){
+      if(idx !== -1){
+        stored[idx] = {...seedRecipe};
+        changed = true;
+      }
+      // if idx === -1, user removed it on purpose — don't resurrect, but still record the new version
+      seedVersions[seedRecipe.id] = sv;
+      changed = true;
+    }
+  });
+
+  recipes = stored;
+  if(changed){
+    await persist();
+    try{ await window.storage.set('seedVersions', JSON.stringify(seedVersions), false); }catch(e){}
+  }
+  render();
+}
+
+async function persist(){
+  try{ await storageSetWithRetry('recipes', JSON.stringify(recipes)); }
+  catch(e){ console.error('storage save failed', e); }
+}
+
+function renderTabs(){
+  const tabsEl = document.getElementById('tabs');
+  const methods = ['all','bbq','airfryer','stovetop','oven','batch'];
+  tabsEl.innerHTML = methods.map(m=>{
+    const label = m==='all' ? 'All' : METHOD_LABELS[m];
+    return `<button class="tab ${activeMethod===m?'active':''}" data-method="${m}">${label}</button>`;
+  }).join('');
+  tabsEl.querySelectorAll('.tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeMethod = btn.dataset.method; render(); });
+  });
+}
+
+function filtered(){
+  return recipes.filter(r=>{
+    const methodOk = activeMethod==='all' || r.method===activeMethod;
+    const term = searchTerm.trim().toLowerCase();
+    const searchOk = !term || (r.title+' '+r.protein+' '+METHOD_LABELS[r.method]).toLowerCase().includes(term);
+    return methodOk && searchOk;
+  });
+}
+
+function render(){
+  renderTabs();
+  const list = document.getElementById('list');
+  const items = filtered();
+  if(items.length===0){
+    list.innerHTML = '<div class="empty">Nothing here yet. Try another tab, or add a recipe below.</div>';
+    return;
+  }
+  list.innerHTML = items.map((r,i)=>{
+    const inPlan = weekPlan[r.id] !== undefined;
+    return `<div class="row" data-id="${r.id}">
+      <div class="row-num">${String(i+1).padStart(2,'0')}</div>
+      <div class="row-main">
+        <div class="row-title">${escapeHtml(r.title)}</div>
+        <div class="row-meta"><span class="tag method">${METHOD_LABELS[r.method]}</span><span class="tag">${escapeHtml(r.protein)}</span><span class="tag">${escapeHtml(r.time||'')}</span></div>
+      </div>
+      <div class="row-macro">${r.macros.cal} kcal<br>${r.macros.prot}g protein</div>
+      <button class="quick-add ${inPlan?'active':''}" data-quickid="${r.id}" title="${inPlan?'Remove from week':'Add to week'}">${inPlan?'✓':'+'}</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.row').forEach(row=>{
+    row.addEventListener('click', (e)=>{
+      if(e.target.closest('.quick-add')) return;
+      openCard(row.dataset.id);
+    });
+  });
+  list.querySelectorAll('.quick-add').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.quickid;
+      const r = recipes.find(x=>x.id===id);
+      if(!r) return;
+      if(weekPlan[id] !== undefined){ delete weekPlan[id]; }
+      else{ weekPlan[id] = dialServings[id] || r.baseServings; }
+      await saveWeekPlan();
+      renderWeekStrip();
+      render();
+    });
+  });
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const DIAL_STEPS = [1,2,3,4,6];
+const DIAL_ROT = {1:-60,2:-30,3:0,4:30,6:60};
+
+function openCard(id){
+  const r = recipes.find(x=>x.id===id);
+  if(!r) return;
+  const serv = dialServings[id] || r.baseServings;
+  dialServings[id] = serv;
+  document.getElementById('cardBody').innerHTML = cardHtml(r, serv);
+  document.getElementById('overlay').classList.add('open');
+  bindCard(r);
+}
+
+function cardHtml(r, serv){
+  const factor = serv / r.baseServings;
+  const ingHtml = r.ingredients.map(ing=>{
+    const amt = round2(ing.a * factor);
+    return `<li><span class="ing-amt">${amt}${ing.u?(' '+ing.u):''}</span>${escapeHtml(ing.n)}</li>`;
+  }).join('');
+  const stepsHtml = r.steps.map(s=>`<li>${escapeHtml(s)}</li>`).join('');
+  return `
+    <div class="card-top">
+      <div>
+        <div class="row-meta" style="margin-bottom:8px;"><span class="tag method">${METHOD_LABELS[r.method]}</span><span class="tag">${escapeHtml(r.protein)}</span></div>
+        <h2>${escapeHtml(r.title)}</h2>
+        <div class="row-meta">${escapeHtml(r.time||'')}</div>
+      </div>
+      <button class="close" id="closeCard">✕</button>
+    </div>
+
+    <div class="dial-block">
+      <div class="dial"><div class="dial-num" id="dialNum">${serv}</div></div>
+      <div class="dial-controls">
+        <div class="dial-label">Servings on the board</div>
+        <div class="dial-steps" id="dialSteps">
+          ${DIAL_STEPS.map(s=>`<button class="dial-step ${s===serv?'active':''}" data-serv="${s}">${s}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="macro-strip">
+      <div class="macro-cell"><div class="macro-val">${r.macros.cal}</div><div class="macro-key">kcal / portion</div></div>
+      <div class="macro-cell"><div class="macro-val">${r.macros.prot}g</div><div class="macro-key">protein</div></div>
+      <div class="macro-cell"><div class="macro-val">${r.macros.carb}g</div><div class="macro-key">carbs</div></div>
+      <div class="macro-cell"><div class="macro-val">${r.macros.fat}g</div><div class="macro-key">fat</div></div>
+    </div>
+
+    <div class="section-label">Ingredients — scaled to ${serv} portion${serv>1?'s':''}</div>
+    <ul class="ing-list">${ingHtml}</ul>
+    ${synergyHtml(r)}
+
+    <div class="section-label">Method</div>
+    <ol class="steps">${stepsHtml}</ol>
+
+    ${r.note ? `<div class="note">${escapeHtml(r.note)}</div>` : ''}
+    <div class="note" style="margin-top:6px;">Macros are approximate estimates, not lab-verified values.</div>
+    <button class="plan-btn ${weekPlan[r.id]!==undefined?'active':''}" id="planBtn">${weekPlan[r.id]!==undefined ? ('Remove from Week ('+weekPlan[r.id]+' portions)') : ('Add to Week ('+serv+' portions)')}</button>
+    <button class="del-btn" id="delRecipe">Remove from board</button>
+  `;
+}
+
+function synergyHtml(recipe){
+  const matches = computeSynergy(recipe);
+  if(matches.length===0) return '';
+  const list = matches.map(m=>`<b>${m.count}</b> with ${escapeHtml(m.title)}`).join(' · ');
+  return `<div class="synergy-block">Shares ingredients: ${list}</div>`;
+}
+
+function round2(n){
+
+  const r = Math.round(n*10)/10;
+  return r % 1 === 0 ? r.toFixed(0) : r.toFixed(1);
+}
+
+function bindCard(r){
+  document.getElementById('closeCard').addEventListener('click', closeCard);
+  document.getElementById('planBtn').addEventListener('click', async ()=>{
+    const serv = dialServings[r.id] || r.baseServings;
+    if(weekPlan[r.id] !== undefined){ delete weekPlan[r.id]; }
+    else{ weekPlan[r.id] = serv; }
+    await saveWeekPlan();
+    renderWeekStrip();
+    document.getElementById('cardBody').innerHTML = cardHtml(r, serv);
+    bindCard(r);
+  });
+  document.getElementById('dialSteps').querySelectorAll('.dial-step').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const serv = parseInt(btn.dataset.serv,10);
+      dialServings[r.id] = serv;
+      document.getElementById('cardBody').innerHTML = cardHtml(r, serv);
+      bindCard(r);
+    });
+  });
+  document.getElementById('delRecipe').addEventListener('click', async ()=>{
+    if(!confirm('Remove "'+r.title+'" from the board?')) return;
+    recipes = recipes.filter(x=>x.id!==r.id);
+    await persist();
+    closeCard();
+    render();
+  });
+}
+
+function closeCard(){
+  document.getElementById('overlay').classList.remove('open');
+}
+
+document.getElementById('overlay').addEventListener('click', (e)=>{
+  if(e.target.id==='overlay') closeCard();
+});
+
+document.getElementById('search').addEventListener('input', (e)=>{
+  searchTerm = e.target.value;
+  render();
+});
+
+document.getElementById('addToggle').addEventListener('click', ()=>{
+  document.getElementById('addForm').classList.toggle('open');
+});
+
+function addIngRow(){
+  const div = document.createElement('div');
+  div.className = 'ing-row';
+  div.innerHTML = `<input placeholder="amt" type="number" step="any"><input placeholder="unit"><input placeholder="ingredient name"><button type="button">✕</button>`;
+  div.querySelector('button').addEventListener('click', ()=> div.remove());
+  document.getElementById('ingRows').appendChild(div);
+}
+document.getElementById('addIngRow').addEventListener('click', addIngRow);
+addIngRow(); addIngRow(); addIngRow();
+
+document.getElementById('saveRecipe').addEventListener('click', async ()=>{
+  const title = document.getElementById('f-title').value.trim();
+  const method = document.getElementById('f-method').value;
+  const protein = document.getElementById('f-protein').value.trim();
+  const base = parseInt(document.getElementById('f-base').value,10);
+  const cal = parseFloat(document.getElementById('f-cal').value)||0;
+  const prot = parseFloat(document.getElementById('f-prot').value)||0;
+  const carb = parseFloat(document.getElementById('f-carb').value)||0;
+  const fat = parseFloat(document.getElementById('f-fat').value)||0;
+  const time = document.getElementById('f-time').value.trim();
+  const stepsRaw = document.getElementById('f-steps').value.trim();
+  const msg = document.getElementById('saveMsg');
+
+  if(!title || !stepsRaw){
+    msg.textContent = 'Add at least a title and steps.';
+    msg.style.color = 'var(--ember)';
+    return;
+  }
+  const ingredients = [];
+  document.getElementById('ingRows').querySelectorAll('.ing-row').forEach(row=>{
+    const inputs = row.querySelectorAll('input');
+    const a = parseFloat(inputs[0].value);
+    const u = inputs[1].value.trim();
+    const n = inputs[2].value.trim();
+    if(n) ingredients.push({a: isNaN(a)?1:a, u, n});
+  });
+  const steps = stepsRaw.split('\n').map(s=>s.trim()).filter(Boolean);
+  const id = 'custom-' + Date.now();
+
+  recipes.push({id, title, method, protein: protein||'—', baseServings: base, time,
+    macros:{cal,prot,carb,fat}, ingredients, steps, note:''});
+  await persist();
+  msg.textContent = 'Saved to your board.';
+  msg.style.color = 'var(--sage)';
+  ['f-title','f-protein','f-cal','f-prot','f-carb','f-fat','f-time','f-steps'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ingRows').innerHTML='';
+  addIngRow(); addIngRow(); addIngRow();
+  render();
+  setTimeout(()=>{ msg.textContent=''; }, 2500);
+});
+
+loadRecipes();
+loadWeekPlan();
+if(typeof window.storage === 'undefined'){
+  showSaveWarning('Storage isn\'t available here — your week plan won\'t be saved between sessions.');
+}
+</script>
+</body>
+</html>
