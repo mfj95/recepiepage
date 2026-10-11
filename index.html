@@ -236,6 +236,13 @@
   .shop-row-top{display:flex;justify-content:space-between;gap:10px;}
   .shop-cost{font-family:'IBM Plex Mono',monospace;color:var(--sage);flex-shrink:0;}
   .leftover-note{font-size:11px;color:var(--mustard);margin-top:2px;}
+  .export-row{display:flex;gap:10px;margin:4px 0 6px;}
+  .export-btn{
+    flex:1;font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:.02em;
+    background:var(--mustard);color:var(--ink);border:none;padding:11px 10px;border-radius:4px;cursor:pointer;
+  }
+  .export-btn:hover{background:#e8b53a;}
+  .export-msg{font-size:12px;color:var(--sage);min-height:16px;margin-bottom:6px;}
   .buy-note{font-size:11px;color:var(--bone-dim);margin-top:2px;}
   .synergy-block{background:var(--charcoal);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:0 0 18px;font-size:12.5px;color:var(--bone-dim);}
   .synergy-block b{color:var(--sage);}
@@ -1604,8 +1611,85 @@ function shoppingListHtml(items){
     <div class="row-meta" style="margin:-8px 0 12px;">Bold amount is what the recipes need — use that at any store. "Buy" line is Aldi's pack size. Tick items off as you shop — "Left to buy" updates live.</div>
     <ul class="shop-list">${rows || '<li class="shop-item">Nothing planned yet.</li>'}</ul>
     <div class="note">Prices are approximate Aldi UK estimates, not live pricing — treat as a rough guide.</div>
+    <div class="export-row">
+      <button class="export-btn" id="saveListFile">Save as file</button>
+      <button class="export-btn" id="shareListText">Share / copy</button>
+    </div>
+    <div class="export-msg" id="exportMsg"></div>
     <button class="del-btn" id="clearPlan">Clear week plan</button>
   `;
+}
+
+function buildListText(){
+  const items = aggregateIngredients();
+  const toBuy = items.filter(it=>!checkedItems[it.key]);
+  const have = items.filter(it=>checkedItems[it.key]);
+  const line = (it, box)=>{
+    const tight = /^(g|kg|ml|l)$/.test(it.unit);
+    const needed = it.unit==='count' ? `${round2(it.qty)}` : `${round2(it.qty)}${tight?'':' '}${it.unit}`;
+    let s = `${box} ${needed} ${it.label}`;
+    if(it.mode==='pack') s += it.ref.unit==='count'
+      ? ` (buy ${it.packsNeeded} pack${it.packsNeeded>1?'s':''})`
+      : ` (buy ${it.packsNeeded} x ${it.ref.pack}${it.ref.unit})`;
+    else if(it.unit==='count') s += ` (buy ${Math.ceil(it.qty-1e-6)})`;
+    return s + ` - £${it.cost.toFixed(2)}`;
+  };
+  const remaining = toBuy.reduce((s,it)=>s+it.cost, 0);
+  const planned = Object.keys(weekPlan).map(id=>{
+    const r = recipes.find(x=>x.id===id);
+    return r ? `- ${r.title} (${weekPlan[id]} portions)` : null;
+  }).filter(Boolean);
+  let out = 'SHOPPING LIST - The Weekly Board\n\nRecipes this week:\n' + planned.join('\n');
+  out += '\n\nTO BUY\n' + (toBuy.map(it=>line(it,'[ ]')).join('\n') || '(nothing left to buy)');
+  out += `\n\nEstimated cost of remaining items: £${remaining.toFixed(2)} (approx. Aldi UK prices)\n`;
+  if(have.length){
+    out += '\nALREADY HAVE / BOUGHT\n' + have.map(it=>line(it,'[x]')).join('\n') + '\n';
+  }
+  return out;
+}
+
+function setExportMsg(m){
+  const el = document.getElementById('exportMsg');
+  if(el) el.textContent = m;
+}
+
+async function saveListAsFile(){
+  const text = buildListText();
+  try{
+    const file = new File([text], 'shopping-list.txt', {type:'text/plain'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title:'Shopping list'});
+      setExportMsg('Choose "Save to Files" to keep it on your phone.');
+      return;
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') return;
+  }
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shopping-list.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+  setExportMsg('Downloaded shopping-list.txt');
+}
+
+async function shareListText(){
+  const text = buildListText();
+  try{
+    if(navigator.share){
+      await navigator.share({title:'Shopping list', text});
+      return;
+    }
+  }catch(e){
+    if(e && e.name==='AbortError') return;
+  }
+  try{
+    await navigator.clipboard.writeText(text);
+    setExportMsg('List copied - paste it into Notes or Messages.');
+  }catch(e){
+    setExportMsg('Could not copy - try Save as file instead.');
+  }
 }
 
 function updateRemainingTotal(){
@@ -1639,6 +1723,10 @@ function bindShoppingList(){
       await saveChecked();
     });
   });
+  const saveBtn = document.getElementById('saveListFile');
+  if(saveBtn) saveBtn.addEventListener('click', saveListAsFile);
+  const shareBtn = document.getElementById('shareListText');
+  if(shareBtn) shareBtn.addEventListener('click', shareListText);
   const clearBtn = document.getElementById('clearPlan');
   if(clearBtn) clearBtn.addEventListener('click', async ()=>{
     if(!confirm('Clear your entire week plan and shopping list?')) return;
