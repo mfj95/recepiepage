@@ -249,6 +249,31 @@
   .extra-add{flex-shrink:0;background:var(--sage);border:none;color:var(--ink);font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:13px;padding:0 14px;border-radius:3px;cursor:pointer;}
   .extra-del{flex-shrink:0;background:none;border:1px solid var(--line);color:var(--bone-dim);width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:12px;}
   .extra-del:hover{color:var(--ember);border-color:var(--ember-dim);}
+  .shop-mode-btn{width:100%;background:var(--ember);color:var(--bone);border:none;font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;font-size:15px;letter-spacing:.03em;padding:13px;border-radius:4px;cursor:pointer;margin:2px 0 14px;}
+  .shop-mode-btn:hover{background:var(--ember-dim);}
+  .shopmode{position:fixed;inset:0;background:var(--charcoal);z-index:70;overflow-y:auto;display:none;-webkit-overflow-scrolling:touch;}
+  .shopmode.open{display:block;}
+  .sm-head{position:sticky;top:0;background:var(--charcoal);border-bottom:1px solid var(--line);padding:max(14px, env(safe-area-inset-top)) 16px 12px;z-index:2;}
+  .sm-top{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .sm-title{font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;font-size:22px;margin:0;}
+  .sm-progress{margin-top:10px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--bone-dim);display:flex;justify-content:space-between;}
+  .sm-bar{height:5px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden;}
+  .sm-bar-fill{height:100%;background:var(--sage);transition:width .2s ease;}
+  .sm-body{padding:4px 16px 90px;max-width:760px;margin:0 auto;}
+  .sm-section{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--mustard);margin:22px 0 2px;}
+  .sm-item{display:flex;align-items:center;gap:14px;padding:15px 2px;border-bottom:1px solid var(--line);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .sm-box{flex-shrink:0;width:28px;height:28px;border:2px solid var(--bone-dim);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--ink);}
+  .sm-item.done .sm-box{background:var(--sage);border-color:var(--sage);}
+  .sm-text{flex:1;min-width:0;font-size:16px;line-height:1.3;}
+  .sm-sub{font-size:12px;color:var(--bone-dim);margin-top:2px;}
+  .sm-price{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--sage);flex-shrink:0;}
+  .sm-item.done{opacity:.55;}
+  .sm-item.done .sm-text{text-decoration:line-through;}
+  .import-box{margin-top:26px;padding-top:6px;border-top:1px solid var(--line);}
+  .tag.try{color:var(--ink);background:var(--mustard);border-color:var(--mustard);}
+  .restore-row{margin-top:30px;text-align:center;}
+  .restore-btn{background:none;border:none;color:var(--bone-dim);font-family:'IBM Plex Mono',monospace;font-size:11px;text-decoration:underline;cursor:pointer;}
+  .note a{color:var(--sage);}
   .buy-note{font-size:11px;color:var(--bone-dim);margin-top:2px;}
   .synergy-block{background:var(--charcoal);border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin:0 0 18px;font-size:12.5px;color:var(--bone-dim);}
   .synergy-block b{color:var(--sage);}
@@ -266,6 +291,16 @@
   <input class="search" id="search" placeholder="Search recipes, proteins, tags…">
   <div class="week-strip" id="weekStrip" style="display:none;"></div>
   <div id="list"></div>
+
+  <div class="import-box">
+    <div class="section-label">Import a recipe from a web page</div>
+    <div class="extra-form">
+      <input class="extra-input" id="importUrl" placeholder="Paste a recipe link (https://…)" inputmode="url" autocapitalize="off" autocorrect="off">
+      <button class="extra-add" id="importBtn">Import</button>
+    </div>
+    <div class="msg" id="importMsg"></div>
+    <div class="note" style="margin-top:2px;">Adds it as 4 portions under the "To try" tab. Check amounts before cooking. Macros only fill in if the page provides them.</div>
+  </div>
 
   <button class="add-toggle" id="addToggle">+ Add a recipe to the board</button>
   <div class="add-form" id="addForm">
@@ -307,11 +342,13 @@
     <button class="submit-btn" id="saveRecipe">Save to board</button>
     <div class="msg" id="saveMsg"></div>
   </div>
+  <div class="restore-row"><button class="restore-btn" id="restoreBtn">Restore deleted built-in recipes</button><div class="msg" id="restoreMsg"></div></div>
 </div>
 
 <div class="overlay" id="overlay">
   <div class="card" id="cardBody"></div>
 </div>
+<div class="shopmode" id="shopMode"></div>
 
 <script>
 // --- Standalone app storage shim ---
@@ -1377,6 +1414,7 @@ let recipes = [];
 let activeMethod = 'all';
 let searchTerm = '';
 let dialServings = {}; // per-recipe chosen servings this session
+let deletedIds = []; // recipes you deleted on purpose (never brought back automatically)
 // Aldi UK reference table — approximate prices/pack sizes, checked against aldi.co.uk.
 // mode 'pack': fixed retail pack, rounds up, tracks leftover. mode 'loose': sold by weight/each, no fixed pack.
 const PRICE_REF = {
@@ -1457,9 +1495,20 @@ const PRICE_REF = {
 
 function convertAmount(ing){
   const ref = PRICE_REF[ing.k];
-  if(!ref) return {qty:ing.a, unit:ing.u||''};
-  const factor = ref.conv[ing.u||''] ?? ref.conv[''] ?? 1;
-  return {qty: ing.a * factor, unit: ref.unit};
+  const u = ing.u || '';
+  if(!ref) return {qty:ing.a, unit:u};
+  if(ref.conv[u] !== undefined) return {qty: ing.a * ref.conv[u], unit: ref.unit};
+  // Unit not listed for this ingredient (e.g. an imported "400g chicken") - convert by dimension
+  const base = ref.unit;
+  const mass = {g:1, kg:1000};
+  const vol = {ml:1, l:1000, tsp:5, tbsp:15, cup:240};
+  if(base==='g' && mass[u]) return {qty: ing.a*mass[u], unit:'g'};
+  if(base==='kg' && mass[u]) return {qty: ing.a*mass[u]/1000, unit:'kg'};
+  if(base==='ml' && vol[u]) return {qty: ing.a*vol[u], unit:'ml'};
+  if(base==='g' && vol[u]) return {qty: ing.a*vol[u], unit:'g'};
+  if(base==='tsp' && u==='tbsp') return {qty: ing.a*3, unit:'tsp'};
+  if(base==='tbsp' && u==='tsp') return {qty: ing.a/3, unit:'tbsp'};
+  return {qty: ing.a, unit: base};
 }
 let weekPlan = {}; // recipeId -> servings, persists until cleared
 let checkedItems = {}; // ingredientKey -> bool, persists until cleared
@@ -1631,7 +1680,7 @@ function shoppingListHtml(items){
     return `<li class="shop-item ${isChecked?'checked':''}" data-key="${escapeHtml(it.key)}" data-cost="${it.cost}">
       <input type="checkbox" ${isChecked?'checked':''}>
       <div style="flex:1;">
-        <div class="shop-row-top"><span>${neededLabel} ${escapeHtml(it.label)}</span><span class="shop-cost">£${it.cost.toFixed(2)}</span></div>
+        <div class="shop-row-top"><span>${neededLabel} ${escapeHtml(it.label)}</span><span class="shop-cost">${it.ref ? '£'+it.cost.toFixed(2) : 'no price'}</span></div>
         ${buyHtml}
         ${leftoverHtml}
       </div>
@@ -1643,6 +1692,7 @@ function shoppingListHtml(items){
       <button class="close" id="closeCard">✕</button>
     </div>
     <div class="row-meta" style="margin-bottom:10px;">${items.length} item${items.length!==1?'s':''} across ${recipeCount} recipe${recipeCount!==1?'s':''}${extraItems.length?(' + '+extraItems.length+' added by you'):''}</div>
+    <button class="shop-mode-btn" id="startShopMode">Start shopping mode</button>
     <div class="extra-form">
       <input class="extra-input" id="extraName" placeholder="Add an item (e.g. washing-up liquid)" maxlength="80">
       <input class="extra-price" id="extraPrice" placeholder="£" inputmode="decimal">
@@ -1677,7 +1727,7 @@ function buildListText(){
       ? ` (buy ${it.packsNeeded} pack${it.packsNeeded>1?'s':''})`
       : ` (buy ${it.packsNeeded} x ${it.ref.pack}${it.ref.unit})`;
     else if(it.unit==='count') s += ` (buy ${Math.ceil(it.qty-1e-6)})`;
-    return s + ` - £${it.cost.toFixed(2)}`;
+    return s + (it.ref ? ` - £${it.cost.toFixed(2)}` : '');
   };
   const extraLine = (x, box)=> `${box} ${x.name}` + (x.price>0 ? ` - £${x.price.toFixed(2)}` : '');
   const extraBuy = extraItems.filter(x=>!x.checked);
@@ -1742,6 +1792,104 @@ async function shareListText(){
   }
 }
 
+const SECTION_ORDER = ['Fruit & veg','Meat & fish','Dairy & eggs','Tins, dry & grains','Sauces, oils & spices','Other','Your added items'];
+const SECTION_KEYS = {
+  'Fruit & veg': ['spinach','cherry_tomatoes','asparagus','baby_potatoes','red_cabbage','fresh_dill','chives','parsley','mint','spring_onion','zucchini','red_onion','bell_pepper','lemon','lime','broccoli','sweet_potato','garlic','cucumber','ginger'],
+  'Meat & fish': ['chicken_thigh','chicken_breast','salmon_fillet','cod_fillet','smoked_salmon','chorizo','pork_shoulder','beef_flank','beef_sirloin','pork_loin'],
+  'Dairy & eggs': ['halloumi','feta','double_cream','parmesan','butter','milk','eggs','yogurt'],
+  'Tins, dry & grains': ['butter_beans','chickpeas','rice','pasta_penne','pasta_tagliatelle','couscous','tortillas','cashews','cornstarch','apple_juice'],
+  'Sauces, oils & spices': ['olive_oil','sesame_oil','soy_sauce','bbq_sauce','red_wine_vinegar','balsamic_vinegar','cider_vinegar','tahini','harissa','tandoori_spice','gochujang','honey','peanut_butter','sesame_seeds','smoked_paprika','dried_oregano','chili_flakes','garlic_powder','brown_sugar','salt','stock','thyme','skewers']
+};
+function sectionFor(key){
+  for(const sec of Object.keys(SECTION_KEYS)){
+    if(SECTION_KEYS[sec].includes(key)) return sec;
+  }
+  return 'Other';
+}
+
+let shopWakeLock = null;
+
+function buildShopModeHtml(){
+  const items = aggregateIngredients();
+  const groups = {};
+  const push = (sec, e)=>{ (groups[sec] = groups[sec] || []).push(e); };
+  items.forEach(it=>{
+    const tight = /^(g|kg|ml|l)$/.test(it.unit);
+    const needed = it.unit==='count' ? round2(it.qty) : round2(it.qty) + (tight?'':' ') + it.unit;
+    let sub = '';
+    if(it.mode==='pack'){
+      sub = it.ref.unit==='count'
+        ? `Buy ${it.packsNeeded} pack${it.packsNeeded>1?'s':''}`
+        : `Buy ${it.packsNeeded} × ${it.ref.pack}${it.ref.unit}`;
+    }
+    push(sectionFor(it.key), {kind:'r', id:it.key, done:!!checkedItems[it.key], text:`${needed} ${it.label}`, sub, price: it.ref ? it.cost : null, sort: it.label});
+  });
+  extraItems.forEach(x=>{
+    push('Your added items', {kind:'x', id:x.id, done:!!x.checked, text:x.name, sub:'', price: x.price>0 ? x.price : null, sort:x.name});
+  });
+  const all = Object.keys(groups).reduce((n,s)=>n+groups[s].length, 0);
+  const done = Object.keys(groups).reduce((n,s)=>n+groups[s].filter(e=>e.done).length, 0);
+  const remaining = items.reduce((s,it)=>s+(checkedItems[it.key]?0:it.cost), 0)
+    + extraItems.reduce((s,x)=>s+(x.checked?0:x.price), 0);
+  const pct = all ? Math.round(done/all*100) : 0;
+  const secs = SECTION_ORDER.filter(s=>groups[s]).map(sec=>{
+    const rows = groups[sec].slice().sort((a,b)=> ((a.done?1:0)-(b.done?1:0)) || a.sort.localeCompare(b.sort)).map(e=>`
+      <div class="sm-item ${e.done?'done':''}" data-kind="${e.kind}" data-id="${escapeHtml(String(e.id))}">
+        <div class="sm-box">${e.done?'✓':''}</div>
+        <div class="sm-text">${escapeHtml(e.text)}${e.sub?`<div class="sm-sub">${escapeHtml(e.sub)}</div>`:''}</div>
+        ${e.price!==null?`<div class="sm-price">£${e.price.toFixed(2)}</div>`:''}
+      </div>`).join('');
+    return `<div class="sm-section">${sec}</div>${rows}`;
+  }).join('');
+  return `<div class="sm-head">
+      <div class="sm-top"><h2 class="sm-title">Shopping</h2><button class="close" id="smClose">✕</button></div>
+      <div class="sm-progress"><span>${done} of ${all} ticked</span><span>£${remaining.toFixed(2)} left</span></div>
+      <div class="sm-bar"><div class="sm-bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div class="sm-body">${secs || '<div class="empty">Nothing on your list yet. Add recipes with the + button, or add items from the Shopping List.</div>'}</div>`;
+}
+
+function renderShopMode(){
+  const el = document.getElementById('shopMode');
+  if(!el) return;
+  const prev = el.scrollTop;
+  el.innerHTML = buildShopModeHtml();
+  el.scrollTop = prev;
+  const close = document.getElementById('smClose');
+  if(close) close.addEventListener('click', closeShopMode);
+  el.querySelectorAll('.sm-item').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const kind = row.dataset.kind, id = row.dataset.id;
+      if(kind==='r'){
+        checkedItems[id] = !checkedItems[id];
+        renderShopMode();
+        saveChecked();
+      } else {
+        const x = extraItems.find(i=>i.id===id);
+        if(x){ x.checked = !x.checked; }
+        renderShopMode();
+        saveExtras();
+      }
+    });
+  });
+}
+
+async function openShopMode(){
+  closeCard();
+  const el = document.getElementById('shopMode');
+  if(!el) return;
+  el.classList.add('open');
+  renderShopMode();
+  try{ if(navigator.wakeLock) shopWakeLock = await navigator.wakeLock.request('screen'); }catch(e){}
+}
+
+function closeShopMode(){
+  const el = document.getElementById('shopMode');
+  if(el) el.classList.remove('open');
+  try{ if(shopWakeLock){ shopWakeLock.release(); shopWakeLock = null; } }catch(e){}
+  renderWeekStrip();
+}
+
 function updateRemainingTotal(){
   const items = document.querySelectorAll('.shop-item[data-cost]');
   let remaining = 0;
@@ -1773,6 +1921,8 @@ function bindShoppingList(){
       await saveChecked();
     });
   });
+  const smBtn = document.getElementById('startShopMode');
+  if(smBtn) smBtn.addEventListener('click', openShopMode);
   const addBtn = document.getElementById('extraAdd');
   if(addBtn) addBtn.addEventListener('click', addExtraItem);
   ['extraName','extraPrice'].forEach(fid=>{
@@ -1832,6 +1982,10 @@ function computeSynergy(recipe){
 }
 
 async function loadRecipes(){
+  try{
+    const dr = await window.storage.get('deletedIds', false);
+    deletedIds = (dr && dr.value) ? JSON.parse(dr.value) : [];
+  }catch(e){ deletedIds = []; }
   let stored = null;
   try{
     const res = await window.storage.get('recipes', false);
@@ -1840,7 +1994,7 @@ async function loadRecipes(){
 
   if(!stored){
     // first ever load
-    recipes = SEED.map(r=>({...r}));
+    recipes = SEED.filter(r=>!deletedIds.includes(r.id)).map(r=>({...r}));
     const seedVersions = {};
     SEED.forEach(r=> seedVersions[r.id] = r.v||1);
     await persist();
@@ -1857,6 +2011,7 @@ async function loadRecipes(){
 
   let changed = false;
   SEED.forEach(seedRecipe=>{
+    if(deletedIds.includes(seedRecipe.id)) return;
     const sv = seedRecipe.v || 1;
     const knownV = seedVersions[seedRecipe.id];
     const idx = stored.findIndex(r=>r.id===seedRecipe.id);
@@ -1879,12 +2034,78 @@ async function loadRecipes(){
     }
   });
 
-  recipes = stored;
+  recipes = stored.filter(r=>!deletedIds.includes(r.id));
   if(changed){
     await persist();
     try{ await window.storage.set('seedVersions', JSON.stringify(seedVersions), false); }catch(e){}
   }
   render();
+}
+
+async function saveDeleted(){
+  try{ await storageSetWithRetry('deletedIds', JSON.stringify(deletedIds)); }
+  catch(e){ console.error('deletedIds save failed', e); }
+}
+
+async function restoreDeleted(){
+  if(!confirm('Bring back any built-in recipes you deleted?')) return;
+  deletedIds = [];
+  await saveDeleted();
+  let added = 0;
+  SEED.forEach(s=>{
+    if(!recipes.some(r=>r.id===s.id)){ recipes.push({...s}); added++; }
+  });
+  await persist();
+  render();
+  const m = document.getElementById('restoreMsg');
+  if(m){ m.textContent = added ? ('Restored '+added+' recipe'+(added>1?'s':'')+'.') : 'Nothing to restore.'; setTimeout(()=>{ m.textContent=''; }, 3000); }
+}
+
+async function importFromLink(){
+  const input = document.getElementById('importUrl');
+  const msg = document.getElementById('importMsg');
+  const btn = document.getElementById('importBtn');
+  if(!input || !msg) return;
+  const url = input.value.trim();
+  if(!url){ return; }
+  msg.style.color = 'var(--bone-dim)';
+  msg.textContent = 'Reading the page…';
+  if(btn) btn.disabled = true;
+  try{
+    const res = await fetch('/api/import?url=' + encodeURIComponent(url));
+    let data = null;
+    try{ data = await res.json(); }catch(e){ data = null; }
+    if(!data){
+      msg.style.color = 'var(--ember)';
+      msg.textContent = 'Import is not available here. It needs the Vercel version of the app with api/import.js added.';
+      return;
+    }
+    if(!data.ok){
+      msg.style.color = 'var(--ember)';
+      msg.textContent = data.error || 'Could not import that page.';
+      return;
+    }
+    if(data.shellfish && data.shellfish.length){
+      const ok = confirm('WARNING: this recipe seems to contain shellfish (' + data.shellfish.join(', ') + '). Add it anyway?');
+      if(!ok){
+        msg.style.color = 'var(--ember)';
+        msg.textContent = 'Not added - it contains shellfish.';
+        return;
+      }
+    }
+    recipes.push(data.recipe);
+    await persist();
+    render();
+    input.value = '';
+    msg.style.color = 'var(--sage)';
+    msg.textContent = 'Added "' + data.recipe.title + '" to the To try tab.' + ((data.warnings && data.warnings.length) ? ' ' + data.warnings.join(' ') : '');
+    openCard(data.recipe.id);
+  }catch(e){
+    msg.style.color = 'var(--ember)';
+    msg.textContent = 'Could not reach the importer. Check your connection and that this is the Vercel version.';
+  }finally{
+    if(btn) btn.disabled = false;
+  }
 }
 
 async function persist(){
@@ -1894,9 +2115,11 @@ async function persist(){
 
 function renderTabs(){
   const tabsEl = document.getElementById('tabs');
-  const methods = ['all','bbq','airfryer','stovetop','oven','batch'];
+  const hasImported = recipes.some(r=>r.imported);
+  if(!hasImported && activeMethod==='imported') activeMethod = 'all';
+  const methods = hasImported ? ['all','imported','bbq','airfryer','stovetop','oven','batch'] : ['all','bbq','airfryer','stovetop','oven','batch'];
   tabsEl.innerHTML = methods.map(m=>{
-    const label = m==='all' ? 'All' : METHOD_LABELS[m];
+    const label = m==='all' ? 'All' : (m==='imported' ? 'To try' : METHOD_LABELS[m]);
     return `<button class="tab ${activeMethod===m?'active':''}" data-method="${m}">${label}</button>`;
   }).join('');
   tabsEl.querySelectorAll('.tab').forEach(btn=>{
@@ -1906,7 +2129,7 @@ function renderTabs(){
 
 function filtered(){
   return recipes.filter(r=>{
-    const methodOk = activeMethod==='all' || r.method===activeMethod;
+    const methodOk = activeMethod==='all' || (activeMethod==='imported' ? !!r.imported : r.method===activeMethod);
     const term = searchTerm.trim().toLowerCase();
     const searchOk = !term || (r.title+' '+r.protein+' '+METHOD_LABELS[r.method]).toLowerCase().includes(term);
     return methodOk && searchOk;
@@ -1927,9 +2150,9 @@ function render(){
       <div class="row-num">${String(i+1).padStart(2,'0')}</div>
       <div class="row-main">
         <div class="row-title">${escapeHtml(r.title)}</div>
-        <div class="row-meta"><span class="tag method">${METHOD_LABELS[r.method]}</span><span class="tag">${escapeHtml(r.protein)}</span><span class="tag">${escapeHtml(r.time||'')}</span></div>
+        <div class="row-meta"><span class="tag method">${METHOD_LABELS[r.method]}</span><span class="tag">${escapeHtml(r.protein)}</span><span class="tag">${escapeHtml(r.time||'')}</span>${r.imported?'<span class="tag try">Imported</span>':''}</div>
       </div>
-      <div class="row-macro">${r.macros.cal} kcal<br>${r.macros.prot}g protein</div>
+      <div class="row-macro">${fmtM(r.macros.cal,' kcal')}<br>${fmtM(r.macros.prot,'g protein')}</div>
       <button class="quick-add ${inPlan?'active':''}" data-quickid="${r.id}" title="${inPlan?'Remove from week':'Add to week'}">${inPlan?'✓':'+'}</button>
     </div>`;
   }).join('');
@@ -1953,6 +2176,8 @@ function render(){
     });
   });
 }
+
+function fmtM(v, suffix){ return (typeof v === 'number' && isFinite(v)) ? (v + suffix) : '—'; }
 
 function escapeHtml(s){
   return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1999,10 +2224,10 @@ function cardHtml(r, serv){
     </div>
 
     <div class="macro-strip">
-      <div class="macro-cell"><div class="macro-val">${r.macros.cal}</div><div class="macro-key">kcal / portion</div></div>
-      <div class="macro-cell"><div class="macro-val">${r.macros.prot}g</div><div class="macro-key">protein</div></div>
-      <div class="macro-cell"><div class="macro-val">${r.macros.carb}g</div><div class="macro-key">carbs</div></div>
-      <div class="macro-cell"><div class="macro-val">${r.macros.fat}g</div><div class="macro-key">fat</div></div>
+      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.cal,'')}</div><div class="macro-key">kcal / portion</div></div>
+      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.prot,'g')}</div><div class="macro-key">protein</div></div>
+      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.carb,'g')}</div><div class="macro-key">carbs</div></div>
+      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.fat,'g')}</div><div class="macro-key">fat</div></div>
     </div>
 
     <div class="section-label">Ingredients — scaled to ${serv} portion${serv>1?'s':''}</div>
@@ -2013,9 +2238,10 @@ function cardHtml(r, serv){
     <ol class="steps">${stepsHtml}</ol>
 
     ${r.note ? `<div class="note">${escapeHtml(r.note)}</div>` : ''}
+    ${r.source ? `<div class="note">Source: <a href="${escapeHtml(r.source)}" target="_blank" rel="noopener">${escapeHtml((()=>{ try{ return new URL(r.source).hostname.replace(/^www\./,''); }catch(e){ return r.source; } })())}</a></div>` : ''}
     <div class="note" style="margin-top:6px;">Macros are approximate estimates, not lab-verified values.</div>
     <button class="plan-btn ${weekPlan[r.id]!==undefined?'active':''}" id="planBtn">${weekPlan[r.id]!==undefined ? ('Remove from Week ('+weekPlan[r.id]+' portions)') : ('Add to Week ('+serv+' portions)')}</button>
-    <button class="del-btn" id="delRecipe">Remove from board</button>
+    <button class="del-btn" id="delRecipe">Delete permanently</button>
   `;
 }
 
@@ -2052,10 +2278,16 @@ function bindCard(r){
     });
   });
   document.getElementById('delRecipe').addEventListener('click', async ()=>{
-    if(!confirm('Remove "'+r.title+'" from the board?')) return;
+    if(!confirm('Permanently delete "'+r.title+'"? This cannot be undone.')) return;
     recipes = recipes.filter(x=>x.id!==r.id);
+    if(!deletedIds.includes(r.id)) deletedIds.push(r.id);
+    delete weekPlan[r.id];
+    delete dialServings[r.id];
     await persist();
+    await saveDeleted();
+    await saveWeekPlan();
     closeCard();
+    renderWeekStrip();
     render();
   });
 }
@@ -2076,6 +2308,11 @@ document.getElementById('search').addEventListener('input', (e)=>{
 document.getElementById('addToggle').addEventListener('click', ()=>{
   document.getElementById('addForm').classList.toggle('open');
 });
+document.getElementById('importBtn').addEventListener('click', importFromLink);
+document.getElementById('importUrl').addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); importFromLink(); }
+});
+document.getElementById('restoreBtn').addEventListener('click', restoreDeleted);
 
 function addIngRow(){
   const div = document.createElement('div');
