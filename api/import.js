@@ -4,7 +4,30 @@
 
 const RULES = [
   // things that look like another ingredient but are not (stop matching)
-  [/rice (wine )?vinegar|rice noodles?|rice paper|coconut milk|coconut cream|chicken stock|beef stock|vegetable stock|fish stock|stock cube|bouillon|\bbroth\b/i, null],
+  [/rice (wine )?vinegar|rice noodles?|rice paper/i, null],
+  [/chicken stock|beef stock|vegetable stock|fish stock|stock cube|stock pot|bouillon|\bbroth\b|\bstock\b/i, 'stock'],
+  [/coconut milk|coconut cream/i, 'coconut_milk'],
+  [/beef mince|minced beef|ground beef/i, 'beef_mince'],
+  [/\bbacon\b|rashers?/i, 'bacon'],
+  [/sausages?/i, 'sausages'],
+  [/mozzarella/i, 'mozzarella'],
+  [/cheddar/i, 'cheddar'],
+  [/greek (style )?yogh?urt/i, 'greek_yogurt'],
+  [/tofu/i, 'tofu'],
+  [/curry paste|korma paste|tikka|massaman/i, 'curry_paste'],
+  [/tomato (puree|paste)/i, 'tomato_puree'],
+  [/(tin|tinned|can|canned|chopped|plum) tomatoes?|tomatoes? (tin|tinned|can|canned)|chopped tomato|passata/i, 'tinned_tomatoes'],
+  [/kidney beans?|black beans?|cannellini|haricot|borlotti|mixed beans/i, 'tinned_beans'],
+  [/lentils?/i, 'lentils'],
+  [/\bcarrots?\b/i, 'carrot'],
+  [/cauliflower/i, 'cauliflower'],
+  [/jalape|chil+i(?! (flakes|powder))|\bchile\b|\bchillies\b/i, 'chilli'],
+  [/avocado/i, 'avocado'],
+  [/coriander|cilantro/i, 'coriander'],
+  [/\bbasil\b/i, 'basil'],
+  [/porridge oats|\boats\b/i, 'oats'],
+  [/(plain|all[- ]purpose|self[- ]raising|wholemeal) flour|\bflour\b/i, 'flour'],
+  [/spaghetti|fusilli|rigatoni|farfalle|linguine|\bpasta\b/i, 'pasta_penne'],
   [/smoked salmon/i, 'smoked_salmon'],
   [/\bsalmon\b/i, 'salmon_fillet'],
   [/\bcod\b/i, 'cod_fillet'],
@@ -78,6 +101,162 @@ const RULES = [
 const SHELLFISH = /\b(prawns?|shrimps?|crabs?|crab ?meat|lobsters?|mussels?|clams?|oysters?|scallops?|crayfish|crawfish|langoustines?|squid|calamari|octopus|cockles?|whelks?|abalone|shellfish|seafood|surimi|krill)\b/gi;
 
 const FRAC = {'½':0.5,'⅓':1/3,'⅔':2/3,'¼':0.25,'¾':0.75,'⅛':0.125,'⅜':0.375,'⅝':0.625,'⅞':0.875,'⅕':0.2};
+
+// ---------- nutrition estimate (per 100 g: kcal, protein, carbs, fat) ----------
+// k = macros per 100g, c = grams per whole item, d = grams per ml (liquids/pastes), cup = grams per 240 ml cup (solids)
+// Order matters: the first match wins, so specific entries come before general ones.
+const NUTR = [
+  [/^(salt|.*\bsalt\b|.*black pepper|pepper|water|ice)\b/i, [0,0,0,0], {c:0,d:1}],
+  [/stock|broth|bouillon/i, [5,0.5,0.5,0.2], {d:1}],
+  [/cooked.*rice|rice.*cooked/i, [130,2.7,28,0.3], {cup:160}],
+  [/\brice\b/i, [360,7,79,0.6], {cup:185}],
+  [/cooked.*(pasta|noodles|spaghetti|penne)|(pasta|noodles).*cooked/i, [158,5.8,31,0.9], {cup:140}],
+  [/pasta|penne|tagliatelle|spaghetti|fusilli|rigatoni|farfalle|linguine|noodles/i, [355,12.5,72,1.5], {cup:100}],
+  [/couscous/i, [360,12.8,73,0.6], {cup:170}],
+  [/quinoa/i, [368,14,64,6], {cup:170}],
+  [/(cooked|pulled|shredded|rotisserie|leftover).*chicken|chicken.*(cooked|pulled|shredded)/i, [165,31,0,3.6], {cup:140}],
+  [/chicken (thigh|leg|drumstick)/i, [177,19,0,11], {c:120}],
+  [/chicken/i, [120,23,0,2.6], {c:175}],
+  [/turkey/i, [150,19,0,8], {c:150}],
+  [/beef mince|minced beef|ground beef|\bmince\b/i, [215,21,0,14], {}],
+  [/steak|sirloin|rump|ribeye|flank|skirt/i, [160,22,0,8], {c:200}],
+  [/pork (loin|chop|steak)|tenderloin/i, [140,22,0,5.5], {c:200}],
+  [/pork/i, [210,18,0,15], {}],
+  [/bacon|pancetta/i, [270,17,0,22], {c:25}],
+  [/chorizo/i, [455,24,2,38], {c:60}],
+  [/sausage/i, [300,13,3,26], {c:60}],
+  [/smoked salmon/i, [180,25,0,8], {c:50}],
+  [/salmon/i, [208,20,0,13], {c:150}],
+  [/\bcod\b|haddock|white fish|sea bass|\bhake\b|pollock/i, [85,18,0,0.8], {c:150}],
+  [/tuna/i, [116,26,0,1], {c:112}],
+  [/\beggs?\b/i, [143,12.6,0.7,9.5], {c:50}],
+  [/tofu/i, [144,15,3,9], {c:200}],
+  [/halloumi/i, [320,22,2,25], {c:225}],
+  [/feta/i, [264,14,4,21], {cup:150}],
+  [/parmesan|parmigiano|pecorino/i, [431,38,4,29], {cup:100}],
+  [/mozzarella/i, [280,22,2,22], {c:125}],
+  [/cheddar|cheese/i, [400,25,1,33], {cup:100}],
+  [/double cream|heavy cream|whipping cream/i, [345,2,3,36], {d:1}],
+  [/cream/i, [190,3,4,19], {d:1}],
+  [/greek.*yogh?urt|yogh?urt.*greek/i, [97,9,4,5], {d:1.05}],
+  [/yogh?urt/i, [65,4.5,7,2.5], {d:1.05}],
+  [/coconut milk|coconut cream/i, [197,2,3,21], {d:1}],
+  [/\bmilk\b/i, [50,3.4,5,2], {d:1.03}],
+  [/butter beans?|kidney beans?|black beans?|cannellini|haricot|borlotti|mixed beans|\bbeans\b/i, [100,7,17,0.5], {c:240,cup:180}],
+  [/chickpeas?|garbanzo/i, [135,8,20,3], {c:240,cup:160}],
+  [/lentils?/i, [116,9,20,0.4], {cup:190}],
+  [/peanut butter/i, [590,25,20,50], {d:1.05}],
+  [/\bbutter\b/i, [717,0.9,0.1,81], {d:0.95}],
+  [/tahini/i, [595,17,21,54], {d:1}],
+  [/olive oil|vegetable oil|sunflower oil|rapeseed oil|coconut oil|sesame oil|cooking oil|\boil\b/i, [884,0,0,100], {d:0.92}],
+  [/mayo/i, [680,1,1,75], {d:0.95}],
+  [/honey/i, [304,0.3,82,0], {d:1.4}],
+  [/maple|syrup|agave/i, [260,0,67,0], {d:1.3}],
+  [/brown sugar|sugar/i, [387,0,100,0], {cup:200}],
+  [/corn ?flour|cornstarch|corn starch/i, [381,0.3,91,0.1], {cup:128}],
+  [/flour/i, [364,10,76,1], {cup:120}],
+  [/breadcrumbs?|panko/i, [395,13,72,5], {cup:110}],
+  [/oats?\b|porridge/i, [380,13,65,7], {cup:90}],
+  [/tortilla|\bwraps?\b/i, [310,8,52,7], {c:60}],
+  [/bagel/i, [270,10,53,1.5], {c:95}],
+  [/bread|bun\b|roll\b|pitta|naan/i, [255,9,49,3], {c:40}],
+  [/cashews?/i, [553,18,30,44], {cup:140}],
+  [/almonds?/i, [579,21,22,50], {cup:140}],
+  [/peanuts?|walnuts?|pecans?|hazelnuts?|pistachios?|\bnuts?\b/i, [600,18,18,52], {cup:140}],
+  [/sesame seeds?|seeds?/i, [573,18,23,50], {d:0.6,cup:145}],
+  [/raisins?|sultanas?|dried (fruit|apricots?|cranberries)/i, [300,3,79,0.5], {cup:150}],
+  [/olives?/i, [115,0.8,6,11], {c:4,cup:135}],
+  [/soy sauce|tamari|liquid aminos/i, [60,8,5,0], {d:1.15}],
+  [/fish sauce/i, [35,5,4,0], {d:1.2}],
+  [/worcestershire/i, [78,0,19,0], {d:1.1}],
+  [/bbq sauce|barbecue sauce|ketchup/i, [130,1,31,0.3], {d:1.2}],
+  [/tomato (puree|paste)/i, [82,4.3,19,0.5], {d:1.1}],
+  [/gochujang/i, [200,5,44,1.5], {d:1.2}],
+  [/sriracha|hot sauce|sweet chil+i/i, [90,2,19,1], {d:1.1}],
+  [/tandoori|tikka|curry paste|korma|masala paste|harissa|pesto|\bpaste\b/i, [130,3,12,8], {d:1.1}],
+  [/mustard/i, [66,4,6,4], {d:1.05}],
+  [/balsamic/i, [88,0.5,17,0], {d:1.1}],
+  [/vinegar/i, [20,0,0.5,0], {d:1}],
+  [/\bwine\b/i, [83,0.1,2.6,0], {d:1}],
+  [/apple juice|cider|juice/i, [46,0.1,11,0], {d:1.04}],
+  [/(tin|tinned|can|canned|chopped).*tomato|tomato.*(tin|tinned|can|canned|chopped)|passata/i, [21,1.2,4,0.2], {c:400,d:1.03}],
+  [/cherry tomato/i, [18,0.9,3.9,0.2], {c:12,cup:150}],
+  [/tomato/i, [18,0.9,3.9,0.2], {c:120,cup:180}],
+  [/spinach/i, [23,2.9,3.6,0.4], {cup:30}],
+  [/kale|chard|rocket|lettuce|salad leaves|cabbage|pak choi|bok choy/i, [25,1.8,5,0.3], {cup:60,c:300}],
+  [/broccoli/i, [34,2.8,7,0.4], {c:300,cup:90}],
+  [/cauliflower/i, [25,1.9,5,0.3], {c:500,cup:100}],
+  [/courgette|zucchini/i, [17,1.2,3.1,0.3], {c:200,cup:120}],
+  [/aubergine|eggplant/i, [25,1,6,0.2], {c:300,cup:80}],
+  [/spring onion|scallion|green garlic|chives|leeks?/i, [32,1.8,7,0.2], {c:15,cup:100}],
+  [/garlic powder|onion powder/i, [330,16,73,0.7], {d:0.6}],
+  [/garlic/i, [149,6.4,33,0.5], {c:4,d:1}],
+  [/ginger/i, [80,1.8,18,0.8], {c:25,d:0.9}],
+  [/jalape|chil+i|chile|habanero|scotch bonnet/i, [29,1.9,6.5,0.4], {c:15}],
+  [/pepper/i, [31,1,6,0.3], {c:150,cup:140}],
+  [/onion/i, [40,1.1,9,0.1], {c:110,cup:160}],
+  [/sweet potato/i, [86,1.6,20,0.1], {c:200,cup:130}],
+  [/potato/i, [77,2,17,0.1], {c:150,cup:150}],
+  [/carrots?/i, [41,0.9,10,0.2], {c:70,cup:130}],
+  [/cucumber/i, [15,0.7,3.6,0.1], {c:300,cup:120}],
+  [/asparagus/i, [20,2.2,3.9,0.1], {c:200,cup:130}],
+  [/mushroom/i, [22,3.1,3.3,0.3], {c:20,cup:70}],
+  [/avocado/i, [160,2,9,15], {c:150}],
+  [/sweetcorn|corn\b/i, [86,3.3,19,1.4], {cup:150}],
+  [/peas\b/i, [81,5.4,14,0.4], {cup:145}],
+  [/green beans?|runner beans?|beans? green/i, [31,1.8,7,0.2], {cup:110}],
+  [/parsley|coriander|cilantro|basil|mint|dill|tarragon|herbs?\b/i, [36,3,6,0.8], {cup:40}],
+  [/lemon juice|lime juice/i, [22,0.4,6.9,0.2], {d:1.03}],
+  [/lemon/i, [29,1.1,9,0.3], {c:60}],
+  [/lime/i, [30,0.7,10,0.2], {c:40}],
+  [/apples?\b/i, [52,0.3,14,0.2], {c:180,cup:125}],
+  [/banana/i, [89,1.1,23,0.3], {c:120}],
+  [/paprika|cumin|oregano|thyme|rosemary|turmeric|garam masala|cinnamon|cayenne|spice|seasoning|chil+i (flakes|powder)|bay lea/i, [280,12,50,10], {d:0.5}],
+];
+const COUNT_UNITS = {cloves: null, pinch: 0.4, handful: 20, bunch: 30, sprig: 1};
+
+function nutritionLookup(name){
+  for(const e of NUTR){ if(e[0].test(name)) return e; }
+  return null;
+}
+function gramsFor(ing, e){
+  const o = e[2] || {};
+  const a = ing.a, u = ing.u || '';
+  if(u === 'g') return a;
+  if(u === 'kg') return a * 1000;
+  let ml = null;
+  if(u === 'ml') ml = a;
+  else if(u === 'tsp') ml = a * 5;
+  else if(u === 'tbsp') ml = a * 15;
+  if(ml !== null){
+    if(o.d != null) return ml * o.d;
+    if(o.cup != null) return ml * o.cup / 240;
+    return ml * 0.6;
+  }
+  if(u === 'cloves') return o.c ? a * o.c : a * 4;
+  if(COUNT_UNITS[u] != null) return a * COUNT_UNITS[u];
+  if(u === '' && o.c != null) return a * o.c;
+  return null;
+}
+// ingredients are already scaled to `servings` portions; returns per-portion macros or null
+function estimateMacros(ingredients, servings){
+  let kcal = 0, p = 0, c = 0, f = 0, matched = 0;
+  const missing = [];
+  for(const ing of ingredients){
+    const e = nutritionLookup(ing.n);
+    const g = e ? gramsFor(ing, e) : null;
+    if(!e || g == null){ missing.push(ing.n); continue; }
+    matched++;
+    const k = e[1];
+    kcal += g * k[0] / 100; p += g * k[1] / 100; c += g * k[2] / 100; f += g * k[3] / 100;
+  }
+  if(!ingredients.length || matched / ingredients.length < 0.6) return {macros: null, matched, total: ingredients.length, missing};
+  const per = x => x / servings;
+  return {
+    macros: {cal: Math.round(per(kcal) / 5) * 5, prot: Math.round(per(p)), carb: Math.round(per(c)), fat: Math.round(per(f))},
+    matched, total: ingredients.length, missing
+  };
+}
 
 // ---------- helpers ----------
 function decodeEntities(s){
@@ -232,6 +411,7 @@ function parseIngredient(rawLine){
     qty = b ? Math.max(a, b) : a; rest = rest.slice(m[0].length);
   }
 
+  if(qty !== null) rest = rest.replace(/^(heaping|heaped|scant|level|generous|rounded|large|small|medium)\s+(?=(cups?|tsps?|tbsps?|teaspoons?|tablespoons?|handfuls?)\b)/i, '');
   if(qty !== null && unit === ''){
     const UNITS = [
       [/^(kg|kilograms?|kilos?)\b\.?\s*/i, 'kg', 1],
@@ -413,7 +593,17 @@ function parseRecipeFromHtml(html, sourceUrl){
     carb: parseNumber(nut.carbohydrateContent) != null ? Math.round(parseNumber(nut.carbohydrateContent)) : '—',
     fat: parseNumber(nut.fatContent) != null ? Math.round(parseNumber(nut.fatContent)) : '—'
   };
-  if(cal == null) warnings.push('No nutrition info on the page, so macros are blank.');
+  let macrosEstimated = false;
+  if(cal == null){
+    const est = estimateMacros(ingredients, 4);
+    if(est.macros){
+      Object.assign(macros, est.macros);
+      macrosEstimated = true;
+      warnings.push('Calories and macros are estimated from ' + est.matched + ' of ' + est.total + ' ingredients (about 10-15% either way).');
+    } else {
+      warnings.push('No nutrition info on the page and too few ingredients recognised to estimate, so macros are blank.');
+    }
+  }
   if(r._fromText) warnings.push('This page had no recipe card, so it was read from the page text. Please check amounts.');
 
   const totalMins = parseDurationMinutes(r.totalTime) || (parseDurationMinutes(r.cookTime) + parseDurationMinutes(r.prepTime));
@@ -437,6 +627,7 @@ function parseRecipeFromHtml(html, sourceUrl){
     macros,
     ingredients,
     steps,
+    macrosEstimated,
     note: 'Imported from ' + host + '. Check amounts before cooking.',
     source: sourceUrl,
     imported: true
@@ -488,3 +679,4 @@ module.exports = handler;
 module.exports.parseRecipeFromHtml = parseRecipeFromHtml;
 module.exports.parseIngredient = parseIngredient;
 module.exports.isBlockedHost = isBlockedHost;
+module.exports.estimateMacros = estimateMacros;
