@@ -309,8 +309,74 @@ function guessProtein(text){
 }
 
 // ---------- main conversion ----------
+// Fallback for blog-style pages with no schema.org recipe data:
+// find an "Ingredients" heading and an "Instructions" heading and read the lists under them.
+function extractRecipeFromText(html){
+  let h = String(html).replace(/<(script|style|noscript|nav|footer|form|svg)\b[\s\S]*?<\/\1>/gi, ' ');
+  const blocks = [];
+  const re = /<(h[1-6]|li|p)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m;
+  while((m = re.exec(h))){
+    const tag = m[1].toLowerCase();
+    const text = clean(decodeEntities(m[2].replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, ' ')));
+    if(text) blocks.push({tag, text});
+  }
+  const isIngHead = t => /^(the )?ingredients?\b[\s:]*$/i.test(t) || /^ingredients?\s+(for|list)\b/i.test(t);
+  const isInstrHead = t => /^(instructions?|directions?|method|steps?|preparation|how to make( it)?)\b[\s:]*$/i.test(t);
+  const isStopHead = t => /^(notes?|recipe notes?|tips?|nutrition|equipment|storage|faqs?|comments?|leave a reply|related|you may also like|more recipes|reviews?|did you make)\b/i.test(t);
+  const isHead = b => /^h[1-6]$/.test(b.tag);
+
+  for(let i = 0; i < blocks.length; i++){
+    if(!isHead(blocks[i]) || !isIngHead(blocks[i].text)) continue;
+    const ings = [];
+    let j = i + 1;
+    for(; j < blocks.length; j++){
+      const b = blocks[j];
+      if(isHead(b) && (isInstrHead(b.text) || isStopHead(b.text))) break;
+      if(b.tag === 'li' && b.text.length < 200) ings.push(b.text);
+      if(ings.length > 60) break;
+    }
+    if(ings.length < 2) continue;
+    // find instructions after the ingredients
+    let k = j;
+    while(k < blocks.length && !(isHead(blocks[k]) && isInstrHead(blocks[k].text))) k++;
+    if(k >= blocks.length) continue;
+    const steps = [];
+    const lis = [];
+    for(let q = k + 1; q < blocks.length; q++){
+      const b = blocks[q];
+      if(isHead(b) && isStopHead(b.text)) break;
+      if(isHead(b)) continue;
+      if(b.text.length < 15) continue;
+      if(b.tag === 'li') lis.push(b.text);
+      steps.push(b.text);
+      if(steps.length > 40) break;
+    }
+    const finalSteps = (lis.length >= 2 ? lis : steps).slice(0, 30);
+    if(!finalSteps.length) continue;
+
+    let name = '';
+    const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+            || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    if(og) name = decodeEntities(og[1]);
+    if(!name){ const h1 = blocks.find(b => b.tag === 'h1'); if(h1) name = h1.text; }
+    name = clean(name.replace(/\s*[\|–—-]\s*[^|–—-]*$/, '')) || 'Imported recipe';
+
+    const ctx = blocks.slice(Math.max(0, i - 5), k + 1).map(b => b.text).join(' ');
+    const ym = ctx.match(/\b(?:serves|servings?|makes|yield)\b[:\s]*(\d+)/i) || ctx.match(/\b(\d+)\s+servings?\b/i);
+    return {
+      name,
+      recipeIngredient: ings,
+      recipeInstructions: finalSteps,
+      recipeYield: ym ? ym[1] : '',
+      _fromText: true
+    };
+  }
+  return null;
+}
+
 function parseRecipeFromHtml(html, sourceUrl){
-  const r = extractRecipeJson(html);
+  const r = extractRecipeJson(html) || extractRecipeFromText(html);
   if(!r) return null;
 
   const title = clean(r.name || 'Imported recipe').slice(0, 100);
@@ -345,6 +411,7 @@ function parseRecipeFromHtml(html, sourceUrl){
     fat: parseNumber(nut.fatContent) != null ? Math.round(parseNumber(nut.fatContent)) : '—'
   };
   if(cal == null) warnings.push('No nutrition info on the page, so macros are blank.');
+  if(r._fromText) warnings.push('This page had no recipe card, so it was read from the page text. Please check amounts.');
 
   const totalMins = parseDurationMinutes(r.totalTime) || (parseDurationMinutes(r.cookTime) + parseDurationMinutes(r.prepTime));
   const allText = title + ' ' + lines.map(l => l.n).join(' ') + ' ' + steps.join(' ');
