@@ -1418,24 +1418,24 @@ let deletedIds = []; // recipes you deleted on purpose (never brought back autom
 // Aldi UK reference table — approximate prices/pack sizes, checked against aldi.co.uk.
 // mode 'pack': fixed retail pack, rounds up, tracks leftover. mode 'loose': sold by weight/each, no fixed pack.
 const PRICE_REF = {
-  chicken_thigh:      {label:'Chicken thigh fillets', cat:'perishable', mode:'pack', unit:'g', pack:600, price:4.39, conv:{'':120}},
-  chicken_breast:     {label:'Chicken breast fillets', cat:'perishable', mode:'pack', unit:'g', pack:300, price:2.29, conv:{'':175}},
+  chicken_thigh:      {label:'Chicken thigh fillets', cat:'perishable', mode:'pack', unit:'g', pack:600, price:4.39, conv:{'':120}, ml2g:0.6},
+  chicken_breast:     {label:'Chicken breast fillets', cat:'perishable', mode:'pack', unit:'g', pack:300, price:2.29, conv:{'':175}, ml2g:0.6},
   salmon_fillet:      {label:'Salmon fillets', cat:'perishable', mode:'pack', unit:'g', pack:240, price:3.59, conv:{'':150}},
   cod_fillet:         {label:'Cod fillets', cat:'perishable', mode:'pack', unit:'g', pack:250, price:4.99, conv:{'':150}},
   smoked_salmon:      {label:'Smoked salmon', cat:'perishable', mode:'pack', unit:'g', pack:100, price:2.49, conv:{'g':1}},
   chorizo:            {label:'Chorizo', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.89, conv:{'g':1}},
   halloumi:           {label:'Halloumi', cat:'perishable', mode:'pack', unit:'g', pack:225, price:1.99, conv:{'g':1}},
-  feta:               {label:'Feta', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.79, conv:{'g':1}},
+  feta:               {label:'Feta', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.79, conv:{'g':1}, ml2g:0.6},
   double_cream:       {label:'Double cream', cat:'perishable', mode:'pack', unit:'ml', pack:300, price:1.65, conv:{'ml':1}},
-  parmesan:           {label:'Parmesan', cat:'perishable', mode:'pack', unit:'g', pack:150, price:2.29, conv:{'g':1}},
+  parmesan:           {label:'Parmesan', cat:'perishable', mode:'pack', unit:'g', pack:150, price:2.29, conv:{'g':1}, ml2g:0.42},
   butter:             {label:'Butter', cat:'pantry', mode:'pack', unit:'g', pack:250, price:1.55, conv:{'tbsp':14}},
   butter_beans:       {label:'Butter beans (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.65, conv:{'g':1}},
   chickpeas:          {label:'Chickpeas (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.55, conv:{'g':1}},
-  spinach:            {label:'Spinach', cat:'perishable', mode:'pack', unit:'g', pack:240, price:1.09, conv:{'g':1}},
-  cherry_tomatoes:    {label:'Cherry tomatoes', cat:'perishable', mode:'pack', unit:'g', pack:250, price:1.09, conv:{'g':1}},
+  spinach:            {label:'Spinach', cat:'perishable', mode:'pack', unit:'g', pack:240, price:1.09, conv:{'g':1}, ml2g:0.125},
+  cherry_tomatoes:    {label:'Cherry tomatoes', cat:'perishable', mode:'pack', unit:'g', pack:250, price:1.09, conv:{'g':1}, ml2g:0.6},
   asparagus:          {label:'Asparagus', cat:'perishable', mode:'pack', unit:'g', pack:200, price:1.49, conv:{'bunch':200}},
   baby_potatoes:      {label:'Baby potatoes', cat:'perishable', mode:'pack', unit:'g', pack:1000, price:1.15, conv:{'g':1}},
-  rice:               {label:'Rice', cat:'pantry', mode:'pack', unit:'g', pack:1000, price:1.15, conv:{'g':1}},
+  rice:               {label:'Rice', cat:'pantry', mode:'pack', unit:'g', pack:1000, price:1.15, conv:{'g':1}, ml2g:0.5},
   pasta_penne:        {label:'Penne', cat:'pantry', mode:'pack', unit:'g', pack:500, price:0.75, conv:{'g':1}},
   pasta_tagliatelle:  {label:'Tagliatelle', cat:'pantry', mode:'pack', unit:'g', pack:500, price:0.95, conv:{'g':1}},
   couscous:           {label:'Couscous', cat:'pantry', mode:'pack', unit:'g', pack:500, price:1.19, conv:{'g':1}},
@@ -1452,7 +1452,7 @@ const PRICE_REF = {
   milk:               {label:'Milk', cat:'pantry', mode:'pack', unit:'ml', pack:568, price:0.65, conv:{'ml':1}},
   fresh_dill:         {label:'Fresh dill', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.75, conv:{'handful':1,'tsp':0.15}},
   chives:             {label:'Chives', cat:'perishable', mode:'pack', unit:'count', pack:1, price:0.85, conv:{'handful':1}},
-  parsley:            {label:'Parsley', cat:'perishable', mode:'pack', unit:'g', pack:30, price:0.65, conv:{'g':1}},
+  parsley:            {label:'Parsley', cat:'perishable', mode:'pack', unit:'g', pack:30, price:0.65, conv:{'g':1}, ml2g:0.2},
 
   zucchini:           {label:'Zucchini', cat:'perishable', mode:'loose', unit:'count', price:0.55, conv:{'':1}},
   red_onion:          {label:'Red onion', cat:'perishable', mode:'loose', unit:'count', price:0.22, conv:{'':1}},
@@ -1477,7 +1477,7 @@ const PRICE_REF = {
   brown_sugar:        {label:'Brown sugar', cat:'pantry', mode:'loose', unit:'tbsp', price:0.04, conv:{'tbsp':1}},
   ginger:             {label:'Ginger', cat:'pantry', mode:'loose', unit:'tsp', price:0.08, conv:{'tsp':1}},
   salt:               {label:'Salt', cat:'pantry', mode:'loose', unit:'tsp', price:0.02, conv:{'tsp':1}},
-  stock:              {label:'Stock/water', cat:'pantry', mode:'loose', unit:'ml', price:0.002, conv:{'ml':1}},
+  stock:              {label:'Stock/water', cat:'pantry', mode:'loose', unit:'ml', price:0.0004, conv:{'ml':1}},
   eggs:               {label:'Eggs', cat:'perishable', mode:'pack', unit:'count', pack:6, price:1.15, conv:{'':1}},
   yogurt:             {label:'Plain yogurt', cat:'perishable', mode:'pack', unit:'g', pack:500, price:0.89, conv:{'g':1}},
   tandoori_spice:     {label:'Tandoori spice paste', cat:'pantry', mode:'pack', unit:'g', pack:90, price:1.29, conv:{'tbsp':15,'g':1}},
@@ -1490,6 +1490,27 @@ const PRICE_REF = {
   sesame_seeds:       {label:'Sesame seeds', cat:'pantry', mode:'pack', unit:'g', pack:100, price:0.85, conv:{'tsp':3,'g':1}},
   peanut_butter:      {label:'Peanut butter', cat:'pantry', mode:'pack', unit:'g', pack:340, price:1.79, conv:{'tbsp':16,'g':1}},
   lime:               {label:'Lime', cat:'perishable', mode:'loose', unit:'count', price:0.30, conv:{'':1}},
+  beef_mince:         {label:'Beef mince (5%)', cat:'perishable', mode:'pack', unit:'g', pack:500, price:3.29, conv:{'g':1}},
+  bacon:              {label:'Bacon rashers', cat:'perishable', mode:'pack', unit:'count', pack:8, price:1.85, conv:{'':1}},
+  sausages:           {label:'Pork sausages', cat:'perishable', mode:'pack', unit:'count', pack:8, price:1.65, conv:{'':1}},
+  mozzarella:         {label:'Mozzarella', cat:'perishable', mode:'pack', unit:'g', pack:125, price:0.85, conv:{'g':1}, ml2g:0.5},
+  cheddar:            {label:'Cheddar', cat:'perishable', mode:'pack', unit:'g', pack:400, price:2.49, conv:{'g':1}, ml2g:0.42},
+  greek_yogurt:       {label:'Greek yogurt', cat:'perishable', mode:'pack', unit:'g', pack:500, price:1.15, conv:{'g':1}, ml2g:1.05},
+  tofu:               {label:'Tofu', cat:'perishable', mode:'pack', unit:'g', pack:400, price:1.49, conv:{'g':1}},
+  curry_paste:        {label:'Curry paste', cat:'pantry', mode:'pack', unit:'g', pack:260, price:1.29, conv:{'tbsp':15,'tsp':5,'g':1}},
+  tomato_puree:       {label:'Tomato puree', cat:'pantry', mode:'pack', unit:'g', pack:200, price:0.69, conv:{'tbsp':16,'tsp':5,'g':1}},
+  tinned_tomatoes:    {label:'Chopped tomatoes (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.39, conv:{'g':1,'':400}, ml2g:1.0},
+  tinned_beans:       {label:'Beans (tin)', cat:'pantry', mode:'pack', unit:'g', pack:400, price:0.55, conv:{'g':1,'':240}, ml2g:0.75},
+  lentils:            {label:'Lentils', cat:'pantry', mode:'pack', unit:'g', pack:500, price:1.15, conv:{'g':1}, ml2g:0.8},
+  coconut_milk:       {label:'Coconut milk (tin)', cat:'pantry', mode:'pack', unit:'ml', pack:400, price:0.95, conv:{'ml':1,'':400}},
+  oats:               {label:'Porridge oats', cat:'pantry', mode:'pack', unit:'g', pack:1000, price:1.25, conv:{'g':1}, ml2g:0.38},
+  flour:              {label:'Plain flour', cat:'pantry', mode:'pack', unit:'g', pack:1500, price:0.85, conv:{'g':1}, ml2g:0.5},
+  carrot:             {label:'Carrots', cat:'perishable', mode:'loose', unit:'count', price:0.10, conv:{'':1}},
+  cauliflower:        {label:'Cauliflower', cat:'perishable', mode:'loose', unit:'count', price:0.85, conv:{'':1}},
+  chilli:             {label:'Chillies', cat:'perishable', mode:'loose', unit:'count', price:0.15, conv:{'':1}},
+  avocado:            {label:'Avocado', cat:'perishable', mode:'loose', unit:'count', price:0.65, conv:{'':1}},
+  coriander:          {label:'Fresh coriander', cat:'perishable', mode:'pack', unit:'g', pack:30, price:0.65, conv:{'g':1,'handful':15,'bunch':30,'sprig':1}, ml2g:0.2},
+  basil:              {label:'Fresh basil', cat:'perishable', mode:'pack', unit:'g', pack:30, price:0.75, conv:{'g':1,'handful':15,'bunch':30,'sprig':1}, ml2g:0.2},
   skewers:            {label:'Wooden skewers', cat:'pantry', mode:'loose', unit:'count', price:0.02, conv:{'':1}},
 };
 
@@ -1505,7 +1526,7 @@ function convertAmount(ing){
   if(base==='g' && mass[u]) return {qty: ing.a*mass[u], unit:'g'};
   if(base==='kg' && mass[u]) return {qty: ing.a*mass[u]/1000, unit:'kg'};
   if(base==='ml' && vol[u]) return {qty: ing.a*vol[u], unit:'ml'};
-  if(base==='g' && vol[u]) return {qty: ing.a*vol[u], unit:'g'};
+  if(base==='g' && vol[u]) return {qty: ing.a*vol[u]*(ref.ml2g!==undefined ? ref.ml2g : 1), unit:'g'};
   if(base==='tsp' && u==='tbsp') return {qty: ing.a*3, unit:'tsp'};
   if(base==='tbsp' && u==='tsp') return {qty: ing.a/3, unit:'tbsp'};
   return {qty: ing.a, unit: base};
@@ -2152,7 +2173,7 @@ function render(){
         <div class="row-title">${escapeHtml(r.title)}</div>
         <div class="row-meta"><span class="tag method">${METHOD_LABELS[r.method]}</span><span class="tag">${escapeHtml(r.protein)}</span><span class="tag">${escapeHtml(r.time||'')}</span>${r.imported?'<span class="tag try">Imported</span>':''}</div>
       </div>
-      <div class="row-macro">${fmtM(r.macros.cal,' kcal')}<br>${fmtM(r.macros.prot,'g protein')}</div>
+      <div class="row-macro">${fmtM(r.macros.cal,' kcal')}${r.macrosEstimated?' est.':''}<br>${fmtM(r.macros.prot,'g protein')}</div>
       <button class="quick-add ${inPlan?'active':''}" data-quickid="${r.id}" title="${inPlan?'Remove from week':'Add to week'}">${inPlan?'✓':'+'}</button>
     </div>`;
   }).join('');
@@ -2224,7 +2245,7 @@ function cardHtml(r, serv){
     </div>
 
     <div class="macro-strip">
-      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.cal,'')}</div><div class="macro-key">kcal / portion</div></div>
+      <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.cal,'')}</div><div class="macro-key">kcal / portion${r.macrosEstimated?' (est.)':''}</div></div>
       <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.prot,'g')}</div><div class="macro-key">protein</div></div>
       <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.carb,'g')}</div><div class="macro-key">carbs</div></div>
       <div class="macro-cell"><div class="macro-val">${fmtM(r.macros.fat,'g')}</div><div class="macro-key">fat</div></div>
