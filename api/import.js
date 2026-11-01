@@ -323,7 +323,7 @@ function extractRecipeFromText(html){
   }
   const isIngHead = t => /^(the )?ingredients?\b[\s:]*$/i.test(t) || /^ingredients?\s+(for|list)\b/i.test(t);
   const isInstrHead = t => /^(instructions?|directions?|method|steps?|preparation|how to make( it)?)\b[\s:]*$/i.test(t);
-  const isStopHead = t => /^(notes?|recipe notes?|tips?|nutrition|equipment|storage|faqs?|comments?|leave a reply|related|you may also like|more recipes|reviews?|did you make)\b/i.test(t);
+  const isStopHead = t => /^(notes?|recipe notes?|tips?|nutrition|equipment|storage|faqs?|related|you may also like|more recipes|did you make|share|subscribe|join)\b/i.test(t) || /\b(comments?|reader interactions|leave a (reply|comment)|reviews?|ratings?|you might also like|more from)\b/i.test(t);
   const isHead = b => /^h[1-6]$/.test(b.tag);
 
   for(let i = 0; i < blocks.length; i++){
@@ -343,10 +343,13 @@ function extractRecipeFromText(html){
     if(k >= blocks.length) continue;
     const steps = [];
     const lis = [];
+    const lvl = t => parseInt(t.tag.slice(1), 10);
+    const instrLvl = lvl(blocks[k]);
     for(let q = k + 1; q < blocks.length; q++){
       const b = blocks[q];
-      if(isHead(b) && isStopHead(b.text)) break;
+      if(isHead(b) && (isStopHead(b.text) || lvl(b) <= instrLvl)) break;
       if(isHead(b)) continue;
+      if(b.text.length > 700) continue;
       if(b.text.length < 15) continue;
       if(b.tag === 'li') lis.push(b.text);
       steps.push(b.text);
